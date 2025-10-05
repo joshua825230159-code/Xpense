@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/account_model.dart';
+import '../models/transaction_model.dart';
 import 'manage_accounts_screen.dart';
 
 class ExpenseListScreen extends StatefulWidget {
@@ -12,13 +13,16 @@ class ExpenseListScreen extends StatefulWidget {
 
 class _ExpenseListScreenState extends State<ExpenseListScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final ScrollController _scrollController = ScrollController();
 
   final List<Account> _accounts = [
-    Account(name: "Ada Deg", balance: 0.0, color: Colors.teal),
-    Account(name: "Budget Book", balance: 1000000.0, color: Colors.green),
+    Account(name: "Dompet Pribadi", balance: 500000.0, color: Colors.teal),
+    Account(name: "Rekening Bank", balance: 10000000.0, color: Colors.blue),
   ];
 
   Account? _activeAccount;
+
+  final Map<Account, List<Transaction>> _accountTransactions = {};
 
   final currencyFormatter =
   NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
@@ -26,9 +30,19 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   @override
   void initState() {
     super.initState();
+    for (var account in _accounts) {
+      _accountTransactions[account] = [];
+    }
+
     if (_accounts.isNotEmpty) {
       _activeAccount = _accounts[0];
     }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _changeActiveAccount(Account account) {
@@ -45,6 +59,113 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     ));
   }
 
+  void _addTransaction(Transaction transaction) {
+    setState(() {
+      if (_activeAccount != null) {
+        _accountTransactions[_activeAccount!]?.insert(0, transaction);
+        if (transaction.type == TransactionType.income) {
+          _activeAccount!.balance += transaction.amount;
+        } else {
+          _activeAccount!.balance -= transaction.amount;
+        }
+      }
+    });
+
+    _scrollController.animateTo(
+      0.0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _showAddTransactionSheet(BuildContext context) {
+    final descriptionController = TextEditingController();
+    final amountController = TextEditingController();
+    var transactionType = TransactionType.expense; // Default
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                top: 20,
+                left: 20,
+                right: 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  const Text('Add New Transaction', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(labelText: 'Description'),
+                  ),
+                  TextField(
+                    controller: amountController,
+                    decoration: const InputDecoration(labelText: 'Amount'),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 20),
+                  ToggleButtons(
+                    isSelected: [
+                      transactionType == TransactionType.income,
+                      transactionType == TransactionType.expense,
+                    ],
+                    onPressed: (index) {
+                      setModalState(() {
+                        transactionType = index == 0 ? TransactionType.income : TransactionType.expense;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(8.0),
+                    selectedColor: Colors.white,
+                    fillColor: transactionType == TransactionType.income ? Colors.green : Colors.red,
+                    children: const <Widget>[
+                      Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('Income')),
+                      Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('Expense')),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      child: const Text('Save Transaction'),
+                      onPressed: () {
+                        final description = descriptionController.text;
+                        final amount = double.tryParse(amountController.text) ?? 0.0;
+
+                        if (description.isEmpty || amount <= 0) {
+                          return;
+                        }
+
+                        final newTransaction = Transaction(
+                          description: description,
+                          amount: amount,
+                          type: transactionType,
+                          date: DateTime.now(),
+                          icon: Icons.shopping_cart,
+                        );
+
+                        _addTransaction(newTransaction);
+                        Navigator.of(ctx).pop();
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,7 +176,6 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
           padding: EdgeInsets.zero,
           children: [
             const SizedBox(height: 16.0),
-
             _buildDrawerSectionTitle("Manage accounts"),
             ListTile(
               leading: const Icon(Icons.add),
@@ -68,7 +188,6 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
               onTap: () {},
             ),
             const Divider(),
-
             _buildDrawerSectionTitle("Cash"),
             ..._accounts.map((account) => ListTile(
               leading: CircleAvatar(
@@ -85,6 +204,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
+          controller: _scrollController,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
             child: Column(
@@ -101,7 +221,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () => _showAddTransactionSheet(context),
         backgroundColor: Colors.orange,
         child: const Icon(Icons.add, color: Colors.white, size: 30),
         shape: const CircleBorder(),
@@ -115,15 +235,31 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: <Widget>[
-            SizedBox(width: 48, height: 48,
-              child: InkWell(borderRadius: BorderRadius.circular(24), onTap: () {},
-                child: const Icon(Icons.home, color: Colors.orange, size: 30,),
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: () {},
+                child: const Icon(
+                  Icons.home,
+                  color: Colors.orange,
+                  size: 30,
+                ),
               ),
             ),
             const SizedBox(width: 40),
-            SizedBox(width: 48, height: 48,
-              child: InkWell(borderRadius: BorderRadius.circular(24), onTap: () {},
-                child: const Icon(Icons.bar_chart, color: Colors.grey, size: 30,),
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: () {},
+                child: const Icon(
+                  Icons.bar_chart,
+                  color: Colors.grey,
+                  size: 30,
+                ),
               ),
             ),
           ],
@@ -182,6 +318,18 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   Widget _buildBalanceCard() {
     double balance = _activeAccount?.balance ?? 0;
 
+    final currentTransactions = _activeAccount != null
+        ? _accountTransactions[_activeAccount!] ?? []
+        : [];
+
+    final totalIncome = currentTransactions
+        .where((t) => t.type == TransactionType.income)
+        .fold(0.0, (sum, item) => sum + item.amount);
+
+    final totalExpense = currentTransactions
+        .where((t) => t.type == TransactionType.expense)
+        .fold(0.0, (sum, item) => sum + item.amount);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -221,10 +369,10 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildIncomeExpenseItem(
-                  Icons.arrow_downward, "Income", currencyFormatter.format(0)),
+                  Icons.arrow_downward, "Income", currencyFormatter.format(totalIncome)),
               const SizedBox(width: 30),
               _buildIncomeExpenseItem(
-                  Icons.arrow_upward, "Expense", currencyFormatter.format(0)),
+                  Icons.arrow_upward, "Expense", currencyFormatter.format(totalExpense)),
             ],
           )
         ],
@@ -266,32 +414,103 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   }
 
   Widget _buildRecentTransactions() {
-    final List<Map<String, dynamic>> transactions = [];
+    final currentTransactions = _activeAccount != null
+        ? _accountTransactions[_activeAccount!] ?? []
+        : [];
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              "Recent Transactions",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-          ],
+        const Text(
+          "Recent Transactions",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
         ),
         const SizedBox(height: 20),
-        ListView.builder(
+        currentTransactions.isEmpty
+            ? const Center(
+          child: Text(
+            "No transactions for this account.",
+            style: TextStyle(color: Colors.grey),
+          ),
+        )
+            : ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: transactions.length,
+          itemCount: currentTransactions.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 15),
           itemBuilder: (context, index) {
-            return const Text("Transaksi akan muncul di sini");
+            final transaction = currentTransactions[index];
+            return _buildTransactionItem(transaction);
           },
-        )
+        ),
       ],
+    );
+  }
+
+  Widget _buildTransactionItem(Transaction transaction) {
+    final color = transaction.type == TransactionType.income ? Colors.green : Colors.red;
+    final amountSign = transaction.type == TransactionType.income ? '+' : '-';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.08),
+            spreadRadius: 1,
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(transaction.icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 15),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    transaction.description,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    DateFormat.yMMMd().add_jm().format(transaction.date),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          Text(
+            "$amountSign ${currencyFormatter.format(transaction.amount)}",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          )
+        ],
+      ),
     );
   }
 }
