@@ -56,7 +56,10 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   }
 
   void _navigateToManageAccounts() async {
-    Navigator.of(context).pop();
+    // Safely close the drawer only if it's open
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      Navigator.of(context).pop();
+    }
 
     final updatedAccounts = await Navigator.push<List<Account>>(
       context,
@@ -73,6 +76,8 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
         }
         if (!_accounts.contains(_activeAccount) && _accounts.isNotEmpty) {
           _activeAccount = _accounts[0];
+        } else if (_accounts.isEmpty) {
+          _activeAccount = null;
         }
       });
     }
@@ -261,11 +266,21 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const SizedBox(height: 16.0),
+            const UserAccountsDrawerHeader(
+              accountName: Text("Xpense"),
+              accountEmail: Text("Track your expenses"),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Icon(Icons.monetization_on, color: Colors.orange, size: 40),
+              ),
+              decoration: BoxDecoration(
+                color: Colors.orange,
+              ),
+            ),
             _buildDrawerSectionTitle("Manage accounts"),
             ListTile(
-              leading: const Icon(Icons.add),
-              title: const Text('New account'),
+              leading: const Icon(Icons.add_circle_outline),
+              title: const Text('Manage Accounts'),
               onTap: _navigateToManageAccounts,
             ),
             const Divider(),
@@ -278,13 +293,16 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
               title: Text(account.name),
               subtitle: Text(currencyFormatter.format(account.balance)),
               selected: account == _activeAccount,
+              selectedTileColor: Colors.orange.withOpacity(0.1),
               onTap: () => _changeActiveAccount(account),
             )),
           ],
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: _accounts.isEmpty
+            ? _buildEmptyState()
+            : SingleChildScrollView(
           controller: _scrollController,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
@@ -301,16 +319,22 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: _accounts.isEmpty
+          ? null
+          : FloatingActionButton(
         onPressed: () => _showAddTransactionSheet(context),
         backgroundColor: Colors.orange,
         child: const Icon(Icons.add, color: Colors.white, size: 30),
         shape: const CircleBorder(),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
+      floatingActionButtonLocation: _accounts.isEmpty
+          ? null
+          : FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: _accounts.isEmpty
+          ? null
+          : BottomAppBar(
         color: Colors.white,
-        height: 50.0,
+        height: 60.0,
         shape: const CircularNotchedRectangle(),
         notchMargin: 8.0,
         child: Row(
@@ -343,6 +367,48 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.account_balance_wallet_outlined,
+              size: 80,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'No Accounts Found',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Please add an account from the side menu to start tracking your finances.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            const SizedBox(height: 25),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text('Add Your First Account', style: TextStyle(color: Colors.white)),
+              onPressed: _navigateToManageAccounts,
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  )
+              ),
+            )
           ],
         ),
       ),
@@ -513,9 +579,12 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
         const SizedBox(height: 20),
         currentTransactions.isEmpty
             ? const Center(
-          child: Text(
-            "No transactions for this account.",
-            style: TextStyle(color: Colors.grey),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 40.0),
+            child: Text(
+              "No transactions for this account yet.",
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
           ),
         )
             : ListView.separated(
