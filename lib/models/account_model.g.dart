@@ -1,4 +1,10 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
 part of 'account_model.dart';
+
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
 
 class AccountAdapter extends TypeAdapter<Account> {
   @override
@@ -15,7 +21,7 @@ class AccountAdapter extends TypeAdapter<Account> {
       balance: fields[1] as double,
       colorValue: fields[2] as int,
       type: fields[3] as AccountType,
-      tags: fields[4] as String?,
+      tags: (fields[4] as List?)?.cast<String>(),
       goalLimit: fields[5] as double?,
       budget: fields[6] as double?,
     );

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../models/account_model.dart';
 
 class AddAccountScreen extends StatefulWidget {
-  const AddAccountScreen({super.key});
+  final Account? account;
+
+  const AddAccountScreen({super.key, this.account});
 
   @override
   _AddAccountScreenState createState() => _AddAccountScreenState();
@@ -13,9 +15,12 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
   final _nameController = TextEditingController();
   final _balanceController = TextEditingController();
-  final _tagsController = TextEditingController();
+  final _tagInputController = TextEditingController(); // Controller untuk input tag
   final _goalController = TextEditingController();
   final _budgetController = TextEditingController();
+
+  // State untuk menyimpan daftar tags
+  List<String> _tags = [];
 
   AccountType _selectedType = AccountType.cash;
   Color _selectedColor = Colors.teal;
@@ -24,26 +29,60 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     Colors.purple, Colors.orange, Colors.pink, Colors.amber,
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.account != null) {
+      _nameController.text = widget.account!.name;
+      _balanceController.text = widget.account!.balance.toString();
+      // Salin tags dari widget ke state lokal
+      _tags = List<String>.from(widget.account!.tags);
+      _goalController.text = widget.account!.goalLimit?.toString() ?? '';
+      _budgetController.text = widget.account!.budget?.toString() ?? '';
+      _selectedType = widget.account!.type;
+      _selectedColor = widget.account!.color;
+    }
+  }
+
   void _saveAccount() {
     if (_formKey.currentState!.validate()) {
-      final newAccount = Account(
+      final newOrUpdatedAccount = Account(
         name: _nameController.text,
         balance: double.tryParse(_balanceController.text) ?? 0.0,
         colorValue: _selectedColor.value,
         type: _selectedType,
-        tags: _tagsController.text,
+        // Simpan list tags, bukan teks dari controller
+        tags: _tags,
         goalLimit: double.tryParse(_goalController.text),
         budget: double.tryParse(_budgetController.text),
       );
-      Navigator.of(context).pop(newAccount);
+      Navigator.of(context).pop(newOrUpdatedAccount);
     }
   }
+
+  // --- FUNGSI BARU UNTUK MENGELOLA TAGS ---
+  void _addTag() {
+    final tagText = _tagInputController.text.trim();
+    if (tagText.isNotEmpty && !_tags.contains(tagText)) {
+      setState(() {
+        _tags.add(tagText);
+        _tagInputController.clear();
+      });
+    }
+  }
+
+  void _removeTag(String tagToRemove) {
+    setState(() {
+      _tags.remove(tagToRemove);
+    });
+  }
+  // -----------------------------------------
 
   @override
   void dispose() {
     _nameController.dispose();
     _balanceController.dispose();
-    _tagsController.dispose();
+    _tagInputController.dispose();
     _goalController.dispose();
     _budgetController.dispose();
     super.dispose();
@@ -51,9 +90,11 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.account != null;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add New Account'),
+        title: Text(isEditing ? 'Edit Account' : 'Add New Account'),
         actions: [
           IconButton(
             icon: const Icon(Icons.check),
@@ -81,8 +122,12 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _balanceController,
-                decoration: const InputDecoration(labelText: 'Opening Balance'),
+                decoration: InputDecoration(
+                    labelText: isEditing ? 'Balance' : 'Opening Balance'
+                ),
                 keyboardType: TextInputType.number,
+                readOnly: isEditing,
+                enabled: !isEditing,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -136,11 +181,39 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _tagsController,
-                decoration: const InputDecoration(labelText: 'Tags (optional)'),
+              const SizedBox(height: 24),
+
+              // --- UI BARU UNTUK TAGS ---
+              const Text('Tags (optional)', style: TextStyle(fontSize: 16)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 4.0,
+                children: _tags.map((tag) => Chip(
+                  label: Text(tag),
+                  onDeleted: () => _removeTag(tag),
+                )).toList(),
               ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _tagInputController,
+                      decoration: const InputDecoration(
+                        labelText: 'Add a tag',
+                      ),
+                      onFieldSubmitted: (_) => _addTag(),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add_circle_outline),
+                    onPressed: _addTag,
+                  ),
+                ],
+              ),
+              // ---------------------------
+
               const SizedBox(height: 16),
               TextFormField(
                 controller: _budgetController,

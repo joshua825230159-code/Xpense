@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/account_model.dart';
 import '../models/transaction_model.dart';
 import 'manage_accounts_screen.dart';
+import 'stats_screen.dart';
 
 class ExpenseListScreen extends StatefulWidget {
   const ExpenseListScreen({super.key});
@@ -34,11 +35,39 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   @override
   void initState() {
     super.initState();
+    _initializeDummyData();
+  }
+
+  void _initializeDummyData() {
+    var cashAccount = Account(name: 'Cash', colorValue: Colors.green.value, type: AccountType.cash, budget: 2000000);
+    var bankAccount = Account(name: 'Bank BCA', colorValue: Colors.blue.value, type: AccountType.bank, budget: 5000000);
+
+    _accounts = [cashAccount, bankAccount];
+    _activeAccount = _accounts[0];
+
+    _accountTransactions[cashAccount] = [
+      Transaction(description: 'Groceries', amount: 250000, type: TransactionType.expense, date: DateTime.now().subtract(const Duration(days: 1)), iconValue: Icons.shopping_cart.codePoint, category: 'Groceries'),
+      Transaction(description: 'Lunch', amount: 50000, type: TransactionType.expense, date: DateTime.now().subtract(const Duration(days: 2)), iconValue: Icons.fastfood.codePoint, category: 'Food'),
+      Transaction(description: 'Salary', amount: 5000000, type: TransactionType.income, date: DateTime.now().subtract(const Duration(days: 5)), iconValue: Icons.attach_money.codePoint, category: 'Salary'),
+      Transaction(description: 'Dinner', amount: 75000, type: TransactionType.expense, date: DateTime.now().subtract(const Duration(days: 3)), iconValue: Icons.fastfood.codePoint, category: 'Food'),
+    ];
+    _accountTransactions[bankAccount] = [
+      Transaction(description: 'Internet Bill', amount: 350000, type: TransactionType.expense, date: DateTime.now(), iconValue: Icons.receipt.codePoint, category: 'Bills'),
+      Transaction(description: 'Movie Tickets', amount: 100000, type: TransactionType.expense, date: DateTime.now().subtract(const Duration(days: 4)), iconValue: Icons.movie.codePoint, category: 'Entertainment'),
+      Transaction(description: 'Freelance Project', amount: 2000000, type: TransactionType.income, date: DateTime.now().subtract(const Duration(days: 10)), iconValue: Icons.work.codePoint, category: 'Freelance'),
+    ];
+
     for (var account in _accounts) {
-      _accountTransactions[account] = [];
-    }
-    if (_accounts.isNotEmpty) {
-      _activeAccount = _accounts[0];
+      double balance = 0;
+      final transactions = _accountTransactions[account] ?? [];
+      for (var t in transactions) {
+        if (t.type == TransactionType.income) {
+          balance += t.amount;
+        } else {
+          balance -= t.amount;
+        }
+      }
+      account.balance = balance;
     }
   }
 
@@ -106,6 +135,24 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     final amountController = TextEditingController();
     var transactionType = TransactionType.expense;
     var selectedIcon = _categoryIcons[0];
+    String? selectedCategory;
+
+    final categoryMap = {
+      Icons.shopping_cart: 'Groceries',
+      Icons.fastfood: 'Food',
+      Icons.airplanemode_active: 'Travel',
+      Icons.receipt: 'Bills',
+      Icons.movie: 'Entertainment',
+      Icons.health_and_safety: 'Health',
+      Icons.school: 'Education',
+      Icons.pets: 'Pets',
+      Icons.home: 'Home',
+      Icons.train: 'Transport',
+      Icons.phone_android: 'Gadgets',
+      Icons.local_gas_station: 'Fuel',
+    };
+
+    selectedCategory = categoryMap[selectedIcon];
 
     showModalBottomSheet(
       context: context,
@@ -186,7 +233,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text('Select Icon', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black54)),
+                    const Text('Select Category', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black54)),
                     const SizedBox(height: 10),
                     SizedBox(
                       height: 60,
@@ -201,6 +248,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                             onTap: () {
                               setModalState(() {
                                 selectedIcon = icon;
+                                selectedCategory = categoryMap[icon];
                               });
                             },
                             child: Container(
@@ -210,7 +258,22 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                                 borderRadius: BorderRadius.circular(15),
                                 border: isSelected ? Border.all(color: Colors.orange, width: 2) : null,
                               ),
-                              child: Icon(icon, color: isSelected ? Colors.orange : Colors.grey.shade700),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(icon, color: isSelected ? Colors.orange : Colors.grey.shade700),
+                                  const SizedBox(height: 2),
+                                  // --- PERUBAHAN PADA WIDGET TEXT DI BAWAH INI ---
+                                  Text(
+                                    categoryMap[icon]!,
+                                    style: TextStyle(fontSize: 10, color: isSelected ? Colors.orange : Colors.grey.shade700),
+                                    maxLines: 1, // Memastikan teks hanya satu baris
+                                    overflow: TextOverflow.ellipsis, // Menampilkan '...' jika terpotong
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  // --- AKHIR DARI PERUBAHAN ---
+                                ],
+                              ),
                             ),
                           );
                         },
@@ -230,16 +293,21 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                           final description = descriptionController.text;
                           final amount = double.tryParse(amountController.text) ?? 0.0;
 
-                          if (description.isEmpty || amount <= 0) return;
+                          if (description.isEmpty || amount <= 0 || (transactionType == TransactionType.expense && selectedCategory == null)) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Please fill all fields and select a category for expenses.'))
+                            );
+                            return;
+                          }
 
                           final newTransaction = Transaction(
                             description: description,
                             amount: amount,
                             type: transactionType,
                             date: DateTime.now(),
-                            icon: selectedIcon,
+                            iconValue: selectedIcon.codePoint,
+                            category: transactionType == TransactionType.expense ? selectedCategory : description,
                           );
-
                           _addTransaction(newTransaction);
                           Navigator.of(ctx).pop();
                         },
@@ -358,7 +426,19 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
               height: 48,
               child: InkWell(
                 borderRadius: BorderRadius.circular(24),
-                onTap: () {},
+                onTap: () {
+                  if (_activeAccount != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => StatsScreen(
+                          account: _activeAccount!,
+                          transactions: _accountTransactions[_activeAccount!] ?? [],
+                        ),
+                      ),
+                    );
+                  }
+                },
                 child: const Icon(
                   Icons.bar_chart,
                   color: Colors.grey,
@@ -481,6 +561,10 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
         .where((t) => t.type == TransactionType.income)
         .fold(0.0, (sum, item) => sum + item.amount);
 
+    final overallExpense = currentTransactions
+        .where((t) => t.type == TransactionType.expense)
+        .fold(0.0, (sum, item) => sum + item.amount);
+
     double budgetProgress = 0.0;
     if (budget != null && budget > 0) {
       budgetProgress = (monthlyExpense / budget).clamp(0.0, 1.0);
@@ -532,10 +616,10 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildIncomeExpenseItem(
-                  Icons.arrow_downward, "Income", currencyFormatter.format(totalIncome)),
+                  Icons.arrow_downward, "Total Income", currencyFormatter.format(totalIncome)),
               const SizedBox(width: 30),
               _buildIncomeExpenseItem(
-                  Icons.arrow_upward, "Expense", currencyFormatter.format(monthlyExpense)),
+                  Icons.arrow_upward, "Total Expense", currencyFormatter.format(overallExpense)),
             ],
           ),
           if (budget != null && budget > 0) ...[
@@ -559,11 +643,11 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  currencyFormatter.format(monthlyExpense),
+                  '${currencyFormatter.format(monthlyExpense)} spent',
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  currencyFormatter.format(budget),
+                  'of ${currencyFormatter.format(budget)}',
                   style: const TextStyle(color: Colors.white70),
                 ),
               ],

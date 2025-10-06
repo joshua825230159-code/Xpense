@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-
 part 'account_model.g.dart';
 
 @HiveType(typeId: 1)
@@ -29,8 +28,10 @@ class Account extends HiveObject {
   @HiveField(3)
   AccountType type;
 
+  // --- DIUBAH dari String? menjadi List<String> ---
   @HiveField(4)
-  String? tags;
+  List<String> tags;
+  // ---------------------------------------------
 
   @HiveField(5)
   double? goalLimit;
@@ -45,8 +46,8 @@ class Account extends HiveObject {
     this.balance = 0.0,
     required this.colorValue,
     required this.type,
-    this.tags,
+    List<String>? tags, // Terima List<String> yang bisa null
     this.goalLimit,
     this.budget,
-  });
+  }) : this.tags = tags ?? []; // Jika null, gunakan list kosong
 }
