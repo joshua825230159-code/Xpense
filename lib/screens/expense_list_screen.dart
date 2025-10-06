@@ -22,20 +22,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     Icons.train, Icons.phone_android, Icons.local_gas_station,
   ];
 
-  List<Account> _accounts = [
-    Account(
-      name: "Dompet Pribadi",
-      balance: 500000.0,
-      colorValue: Colors.teal.value,
-      type: AccountType.cash,
-    ),
-    Account(
-      name: "Rekening Bank",
-      balance: 10000000.0,
-      colorValue: Colors.blue.value,
-      type: AccountType.bank,
-    ),
-  ];
+  List<Account> _accounts = [];
 
   Account? _activeAccount;
 
@@ -281,13 +268,8 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
               title: const Text('New account'),
               onTap: _navigateToManageAccounts,
             ),
-            ListTile(
-              leading: const Icon(Icons.account_tree_outlined),
-              title: const Text('Account types'),
-              onTap: () {},
-            ),
             const Divider(),
-            _buildDrawerSectionTitle("Cash"),
+            _buildDrawerSectionTitle("Accounts"),
             ..._accounts.map((account) => ListTile(
               leading: CircleAvatar(
                 backgroundColor: account.color,
