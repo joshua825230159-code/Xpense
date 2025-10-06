@@ -57,50 +57,52 @@ class _StatsScreenState extends State<StatsScreen> {
     _processTransactionData();
   }
 
+  @override
+  void didUpdateWidget(covariant StatsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.transactions != oldWidget.transactions || widget.account != oldWidget.account) {
+      _processTransactionData();
+    }
+  }
+
   void _processTransactionData() {
     final data = <String, double>{};
     _totalExpense = 0.0;
 
-    for (var transaction in widget.transactions) {
-      if (transaction.type == TransactionType.expense) {
-        final category = transaction.category ?? 'Uncategorized';
-        data[category] = (data[category] ?? 0) + transaction.amount;
-        _totalExpense += transaction.amount;
+    setState(() {
+      for (var transaction in widget.transactions) {
+        if (transaction.type == TransactionType.expense) {
+          final category = transaction.category ?? 'Uncategorized';
+          data[category] = (data[category] ?? 0) + transaction.amount;
+          _totalExpense += transaction.amount;
+        }
       }
-    }
 
-    _expenseByCategory = Map.fromEntries(
-      data.entries.toList()
-        ..sort((e1, e2) => e2.value.compareTo(e1.value)),
-    );
+      _expenseByCategory = Map.fromEntries(
+        data.entries.toList()
+          ..sort((e1, e2) => e2.value.compareTo(e1.value)),
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Expense'),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black,
+    return _expenseByCategory.isEmpty
+        ? const Center(
+      child: Text(
+        'No expense data available.',
+        style: TextStyle(fontSize: 18, color: Colors.grey),
       ),
-      body: _expenseByCategory.isEmpty
-          ? const Center(
-        child: Text(
-          'No expense data available.',
-          style: TextStyle(fontSize: 18, color: Colors.grey),
-        ),
-      )
-          : SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatisticsCard(),
-            const SizedBox(height: 24),
-            _buildExpensesList(),
-          ],
-        ),
+    )
+        : SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildStatisticsCard(),
+          const SizedBox(height: 24),
+          _buildExpensesList(),
+        ],
       ),
     );
   }

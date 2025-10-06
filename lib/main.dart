@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'screens/expense_list_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'models/account_model.dart';
+import 'models/transaction_model.dart';
+import 'screens/main_screen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  Hive.registerAdapter(AccountAdapter());
+  Hive.registerAdapter(AccountTypeAdapter());
+  Hive.registerAdapter(TransactionAdapter());
+  Hive.registerAdapter(TransactionTypeAdapter());
+
   runApp(const MyApp());
 }
 
@@ -19,13 +20,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Aplikasi Keuangan',
-      debugShowCheckedModeBanner: false,
+      title: 'Xpense App',
       theme: ThemeData(
         primarySwatch: Colors.orange,
-        fontFamily: 'Inter',
+        scaffoldBackgroundColor: const Color(0xFFF6F7F9),
       ),
-      home: const ExpenseListScreen(),
+      home: const MainScreen(),
     );
   }
 }

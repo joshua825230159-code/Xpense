@@ -3,8 +3,13 @@ import '../models/account_model.dart';
 
 class AddAccountScreen extends StatefulWidget {
   final Account? account;
+  final List<String> allAvailableTags;
 
-  const AddAccountScreen({super.key, this.account});
+  const AddAccountScreen({
+    super.key,
+    this.account,
+    this.allAvailableTags = const [],
+  });
 
   @override
   _AddAccountScreenState createState() => _AddAccountScreenState();
@@ -15,7 +20,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
   final _nameController = TextEditingController();
   final _balanceController = TextEditingController();
-  final _tagInputController = TextEditingController(); // Controller untuk input tag
   final _goalController = TextEditingController();
   final _budgetController = TextEditingController();
 
@@ -57,16 +61,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     }
   }
 
-  void _addTag() {
-    final tagText = _tagInputController.text.trim();
-    if (tagText.isNotEmpty && !_tags.contains(tagText)) {
-      setState(() {
-        _tags.add(tagText);
-        _tagInputController.clear();
-      });
-    }
-  }
-
   void _removeTag(String tagToRemove) {
     setState(() {
       _tags.remove(tagToRemove);
@@ -77,7 +71,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   void dispose() {
     _nameController.dispose();
     _balanceController.dispose();
-    _tagInputController.dispose();
     _goalController.dispose();
     _budgetController.dispose();
     super.dispose();
@@ -118,8 +111,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
               TextFormField(
                 controller: _balanceController,
                 decoration: InputDecoration(
-                    labelText: isEditing ? 'Balance' : 'Opening Balance'
-                ),
+                    labelText: isEditing ? 'Balance' : 'Opening Balance'),
                 keyboardType: TextInputType.number,
                 readOnly: isEditing,
                 enabled: !isEditing,
@@ -140,7 +132,8 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                 items: AccountType.values.map((AccountType type) {
                   return DropdownMenuItem<AccountType>(
                     value: type,
-                    child: Text(type.name[0].toUpperCase() + type.name.substring(1)),
+                    child: Text(
+                        type.name[0].toUpperCase() + type.name.substring(1)),
                   );
                 }).toList(),
                 onChanged: (newValue) {
@@ -156,7 +149,9 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                 height: 50,
                 child: GridView.builder(
                   scrollDirection: Axis.horizontal,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 1),
+                  gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 1),
                   itemCount: _availableColors.length,
                   itemBuilder: (context, index) {
                     final color = _availableColors[index];
@@ -168,7 +163,9 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                           color: color,
                           shape: BoxShape.circle,
                           border: _selectedColor == color
-                              ? Border.all(color: Theme.of(context).primaryColor, width: 3)
+                              ? Border.all(
+                              color: Theme.of(context).primaryColor,
+                              width: 3)
                               : null,
                         ),
                       ),
@@ -182,40 +179,101 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
               Wrap(
                 spacing: 8.0,
                 runSpacing: 4.0,
-                children: _tags.map((tag) => Chip(
+                children: _tags
+                    .map((tag) => Chip(
                   label: Text(tag),
                   onDeleted: () => _removeTag(tag),
-                )).toList(),
+                ))
+                    .toList(),
               ),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _tagInputController,
-                      decoration: const InputDecoration(
-                        labelText: 'Add a tag',
+
+              Autocomplete<String>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if (textEditingValue.text.isEmpty) {
+                    return const Iterable<String>.empty();
+                  }
+                  return widget.allAvailableTags.where((String option) {
+                    return option.toLowerCase().contains(textEditingValue.text.toLowerCase()) && !_tags.contains(option);
+                  });
+                },
+                onSelected: (String selection) {
+                  setState(() {
+                    _tags.add(selection);
+                  });
+                },
+                fieldViewBuilder: (BuildContext context,
+                    TextEditingController fieldController,
+                    FocusNode fieldFocusNode,
+                    VoidCallback onFieldSubmitted) {
+                  return TextFormField(
+                    controller: fieldController,
+                    focusNode: fieldFocusNode,
+                    decoration: InputDecoration(
+                      labelText: 'Add a tag',
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: () {
+                          final tagText = fieldController.text.trim();
+                          if (tagText.isNotEmpty && !_tags.contains(tagText)) {
+                            setState(() {
+                              _tags.add(tagText);
+                              fieldController.clear();
+                            });
+                          }
+                        },
                       ),
-                      onFieldSubmitted: (_) => _addTag(),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle_outline),
-                    onPressed: _addTag,
-                  ),
-                ],
+                    onFieldSubmitted: (String value) {
+                      final tagText = value.trim();
+                      if (tagText.isNotEmpty && !_tags.contains(tagText)) {
+                        setState(() {
+                          _tags.add(tagText);
+                          fieldController.clear();
+                        });
+                      }
+                    },
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4.0,
+                      child: SizedBox(
+                        width: 300,
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          itemCount: options.length,
+                          shrinkWrap: true,
+                          itemBuilder: (BuildContext context, int index) {
+                            final String option = options.elementAt(index);
+                            return ListTile(
+                              title: Text(option),
+                              onTap: () {
+                                onSelected(option);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
 
               const SizedBox(height: 16),
               TextFormField(
                 controller: _budgetController,
-                decoration: const InputDecoration(labelText: 'Monthly Budget (optional)'),
+                decoration: const InputDecoration(
+                    labelText: 'Monthly Budget (optional)'),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _goalController,
-                decoration: const InputDecoration(labelText: 'Goal Limit (optional)'),
+                decoration:
+                const InputDecoration(labelText: 'Goal Limit (optional)'),
                 keyboardType: TextInputType.number,
               ),
             ],

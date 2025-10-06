@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
-@HiveType(typeId: 2)
+part 'transaction_model.g.dart';
+
+@HiveType(typeId: 3)
 enum TransactionType {
   @HiveField(0)
   income,
+
   @HiveField(1)
   expense,
 }
 
-@HiveType(typeId: 3)
+@HiveType(typeId: 2)
 class Transaction extends HiveObject {
   @HiveField(0)
   String description;

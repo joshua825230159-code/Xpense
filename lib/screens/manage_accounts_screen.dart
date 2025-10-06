@@ -70,7 +70,9 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
   void _navigateAndAddAccount(BuildContext context) async {
     final newAccount = await Navigator.push<Account>(
       context,
-      MaterialPageRoute(builder: (context) => const AddAccountScreen()),
+      MaterialPageRoute(
+        builder: (context) => AddAccountScreen(allAvailableTags: _allTags),
+      ),
     );
 
     if (newAccount != null) {
@@ -89,7 +91,10 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
     final updatedAccount = await Navigator.push<Account>(
       context,
       MaterialPageRoute(
-        builder: (context) => AddAccountScreen(account: account),
+        builder: (context) => AddAccountScreen(
+          account: account,
+          allAvailableTags: _allTags,
+        ),
       ),
     );
 
@@ -109,6 +114,40 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
     });
     _extractAllTags();
     _filterAccounts();
+  }
+
+  void _deleteSingleAccount(Account account) {
+    setState(() {
+      _accounts.remove(account);
+    });
+    _extractAllTags();
+    _filterAccounts();
+  }
+
+  void _showSingleDeleteConfirmationDialog(Account account) {
+    showDialog(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: const Text('Confirm Deletion'),
+          content: Text('Are you sure you want to delete the account "${account.name}"? This action cannot be undone.'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(ctx).pop(),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+              onPressed: () {
+                _deleteSingleAccount(account);
+                Navigator.of(ctx).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showMassDeleteConfirmationDialog() {
@@ -137,6 +176,88 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
     );
   }
 
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        String searchQuery = '';
+
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            final displayedTags = _allTags
+                .where((tag) => tag.toLowerCase().contains(searchQuery.toLowerCase()))
+                .toList();
+
+            return Padding(
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                  left: 16, right: 16, top: 16
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Filter by Tag',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    onChanged: (value) {
+                      setModalState(() {
+                        searchQuery = value;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Search tags',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 24),
+                  ListTile(
+                    title: const Text('All Accounts', style: TextStyle(fontWeight: FontWeight.w500)),
+                    leading: Icon(_selectedTag == null ? Icons.check_circle : Icons.radio_button_unchecked, color: Colors.orange),
+                    onTap: () {
+                      setState(() => _selectedTag = null);
+                      _filterAccounts();
+                      Navigator.pop(context);
+                    },
+                  ),
+                  Flexible(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: displayedTags.length,
+                      itemBuilder: (context, index) {
+                        final tag = displayedTags[index];
+                        return ListTile(
+                          title: Text(tag),
+                          leading: Icon(_selectedTag == tag ? Icons.check_circle : Icons.radio_button_unchecked, color: Colors.orange),
+                          onTap: () {
+                            setState(() => _selectedTag = tag);
+                            _filterAccounts();
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -152,32 +273,6 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
         appBar: _isSelectionMode ? _buildSelectionAppBar() : _buildDefaultAppBar(),
         body: Column(
           children: [
-            if (_allTags.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: SizedBox(
-                  height: 40,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _allTags.length,
-                    separatorBuilder: (context, index) => const SizedBox(width: 8),
-                    itemBuilder: (context, index) {
-                      final tag = _allTags[index];
-                      return ChoiceChip(
-                        label: Text(tag),
-                        selected: _selectedTag == tag,
-                        onSelected: (isSelected) {
-                          setState(() {
-                            _selectedTag = isSelected ? tag : null;
-                          });
-                          _filterAccounts();
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ),
-
             Expanded(
               child: ListView.builder(
                 itemCount: _filteredAccounts.length,
@@ -215,12 +310,18 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                       onSelected: (value) {
                         if (value == 'edit') {
                           _navigateAndEditAccount(context, account, index);
+                        } else if (value == 'delete') {
+                          _showSingleDeleteConfirmationDialog(account);
                         }
                       },
                       itemBuilder: (BuildContext context) => [
                         const PopupMenuItem<String>(
                           value: 'edit',
                           child: Text('Edit'),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Text('Delete'),
                         ),
                       ],
                     ),
@@ -242,6 +343,15 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
   AppBar _buildDefaultAppBar() {
     return AppBar(
       title: const Text("Manage Accounts"),
+      actions: [
+        if (_allTags.isNotEmpty)
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            color: _selectedTag == null ? null : Colors.orange,
+            tooltip: 'Filter by Tag',
+            onPressed: _showFilterSheet,
+          ),
+      ],
     );
   }
 
