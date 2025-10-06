@@ -5,21 +5,21 @@ import '../models/transaction_model.dart';
 
 class ExpenseListScreen extends StatelessWidget {
   final Account? activeAccount;
-  final Map<Account, List<Transaction>> accountTransactions;
+  final List<Transaction> transactions;
+  final bool isSearching;
+  final String searchQuery;
 
   const ExpenseListScreen({
     super.key,
     required this.activeAccount,
-    required this.accountTransactions,
+    required this.transactions,
+    required this.isSearching,
+    required this.searchQuery,
   });
 
   @override
   Widget build(BuildContext context) {
     final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
-
-    final currentTransactions = activeAccount != null
-        ? accountTransactions[activeAccount!] ?? []
-        : <Transaction>[];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7F9),
@@ -30,14 +30,54 @@ class ExpenseListScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildBalanceCard(currencyFormatter, activeAccount, currentTransactions),
-                const SizedBox(height: 20),
-                _buildRecentTransactions(currentTransactions, currencyFormatter),
+                if (!isSearching) ...[
+                  _buildBalanceCard(currencyFormatter, activeAccount, transactions),
+                  const SizedBox(height: 20),
+                ],
+                _buildRecentTransactions(transactions, currencyFormatter, isSearching, searchQuery),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildRecentTransactions(List<Transaction> transactions, NumberFormat currencyFormatter, bool isSearching, String searchQuery) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!isSearching)
+          const Text(
+            "Recent Transactions",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        if (!isSearching) const SizedBox(height: 20),
+        transactions.isEmpty
+            ? Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40.0),
+            child: Text(
+              searchQuery.isNotEmpty ? 'No transactions found.' : "No transactions for this account yet.",
+              style: const TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+          ),
+        )
+            : ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: transactions.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 15),
+          itemBuilder: (context, index) {
+            final transaction = transactions[index];
+            return _buildTransactionItem(transaction, currencyFormatter);
+          },
+        ),
+      ],
     );
   }
 
@@ -186,44 +226,6 @@ class ExpenseListScreen extends StatelessWidget {
       ],
     );
   }
-
-  Widget _buildRecentTransactions(List<Transaction> currentTransactions, NumberFormat currencyFormatter) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Recent Transactions",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 20),
-        currentTransactions.isEmpty
-            ? const Center(
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 40.0),
-            child: Text(
-              "No transactions for this account yet.",
-              style: TextStyle(color: Colors.grey, fontSize: 16),
-            ),
-          ),
-        )
-            : ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: currentTransactions.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 15),
-          itemBuilder: (context, index) {
-            final transaction = currentTransactions[index];
-            return _buildTransactionItem(transaction, currencyFormatter);
-          },
-        ),
-      ],
-    );
-  }
-
   Widget _buildTransactionItem(Transaction transaction, NumberFormat currencyFormatter) {
     final color = transaction.type == TransactionType.income ? Colors.green : Colors.red;
     final amountSign = transaction.type == TransactionType.income ? '+' : '-';

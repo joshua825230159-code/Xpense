@@ -25,14 +25,50 @@ class _MainScreenState extends State<MainScreen> {
 
   int _selectedIndex = 0;
 
+  bool _isSearching = false;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(() {
+      if (_searchController.text.isEmpty && _searchQuery.isNotEmpty) {
+        _updateSearchQuery('');
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _startSearch() {
+    setState(() {
+      _isSearching = true;
+    });
+  }
+
+  void _stopSearch() {
+    setState(() {
+      _isSearching = false;
+      _searchQuery = '';
+      _searchController.clear();
+    });
+  }
+
+  void _updateSearchQuery(String newQuery) {
+    setState(() {
+      _searchQuery = newQuery;
+    });
   }
 
   void _changeActiveAccount(Account account) {
     setState(() {
       _activeAccount = account;
+      if (_isSearching) _stopSearch();
     });
     Navigator.pop(context);
   }
@@ -83,34 +119,32 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final List<Transaction> allTransactions = _activeAccount != null
+        ? _accountTransactions[_activeAccount!] ?? []
+        : [];
+
+    final filteredTransactions = allTransactions.where((transaction) {
+      return transaction.description.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
+
+
     final List<Widget> pages = [
       ExpenseListScreen(
         activeAccount: _activeAccount,
-        accountTransactions: _accountTransactions,
+        transactions: filteredTransactions,
+        isSearching: _isSearching,
+        searchQuery: _searchQuery,
       ),
       if (_activeAccount != null)
         StatsScreen(
           account: _activeAccount!,
-          transactions: List.from(_accountTransactions[_activeAccount!] ?? []),
+          transactions: List.from(allTransactions),
         ),
     ];
 
     return Scaffold(
       key: _scaffoldKey,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF6F7F9),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, size: 30, color: Colors.black),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-        ),
-        title: Text(
-          _selectedIndex == 0 ? (_activeAccount?.name ?? "No Account") : "Statistics",
-          style: const TextStyle(
-              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
-        ),
-        centerTitle: true,
-      ),
+      appBar: _isSearching ? _buildSearchAppBar() : _buildDefaultAppBar(),
       drawer: _buildDrawer(),
       body: _accounts.isEmpty
           ? _buildEmptyState()
@@ -118,7 +152,7 @@ class _MainScreenState extends State<MainScreen> {
         index: _selectedIndex,
         children: pages,
       ),
-      floatingActionButton: _accounts.isEmpty
+      floatingActionButton: (_accounts.isEmpty || _isSearching)
           ? null
           : FloatingActionButton(
         onPressed: () => _showAddTransactionSheet(context),
@@ -152,11 +186,173 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  AppBar _buildDefaultAppBar() {
+    return AppBar(
+      backgroundColor: const Color(0xFFF6F7F9),
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.menu, size: 30, color: Colors.black),
+        onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+      ),
+      title: Text(
+        _selectedIndex == 0 ? (_activeAccount?.name ?? "No Account") : "Statistics",
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+      ),
+      centerTitle: true,
+      actions: [
+        if (_selectedIndex == 0)
+          IconButton(
+            icon: const Icon(Icons.search, size: 28, color: Colors.black),
+            onPressed: _startSearch,
+          ),
+      ],
+    );
+  }
+
+  AppBar _buildSearchAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 1,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.black),
+        onPressed: _stopSearch,
+      ),
+      title: TextField(
+        controller: _searchController,
+        onChanged: _updateSearchQuery,
+        autofocus: true,
+        decoration: const InputDecoration(
+          hintText: 'Search transactions...',
+          border: InputBorder.none,
+        ),
+      ),
+      actions: [
+        if (_searchQuery.isNotEmpty)
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.black),
+            onPressed: () {
+              _searchController.clear();
+            },
+          )
+      ],
+    );
+  }
+
+  Widget _buildBottomNavItem({required IconData icon, required bool isSelected, required VoidCallback onTap}) {
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Icon(
+          icon,
+          color: isSelected ? Colors.orange : Colors.grey,
+          size: 30,
+        ),
+      ),
+    );
+  }
+
+  Drawer _buildDrawer() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const UserAccountsDrawerHeader(
+            accountName: Text("Xpense"),
+            accountEmail: Text("Track your expenses"),
+            currentAccountPicture: CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Icon(Icons.monetization_on, color: Colors.orange, size: 40),
+            ),
+            decoration: BoxDecoration(color: Colors.orange),
+          ),
+          _buildDrawerSectionTitle("Manage accounts"),
+          ListTile(
+            leading: const Icon(Icons.add_circle_outline),
+            title: const Text('Manage Accounts'),
+            onTap: _navigateToManageAccounts,
+          ),
+          const Divider(),
+          _buildDrawerSectionTitle("Accounts"),
+          ..._accounts.map((account) => ListTile(
+            leading: CircleAvatar(
+              backgroundColor: account.color,
+              radius: 16,
+            ),
+            title: Text(account.name),
+            subtitle: Text(currencyFormatter.format(account.balance)),
+            selected: account == _activeAccount,
+            selectedTileColor: Colors.orange.withOpacity(0.1),
+            onTap: () => _changeActiveAccount(account),
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          color: Colors.grey.shade700,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.account_balance_wallet_outlined,
+              size: 80,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'No Accounts Found',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Please add an account from the side menu to start tracking your finances.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            const SizedBox(height: 25),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text('Add Your First Account',
+                  style: TextStyle(color: Colors.white)),
+              onPressed: _navigateToManageAccounts,
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  )),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showAddTransactionSheet(BuildContext context) {
     final descriptionController = TextEditingController();
     final amountController = TextEditingController();
     var transactionType = TransactionType.expense;
-
     final expenseCategoryMap = {
       Icons.shopping_cart: 'Groceries',
       Icons.fastfood: 'Food',
@@ -171,7 +367,6 @@ class _MainScreenState extends State<MainScreen> {
       Icons.phone_android: 'Gadgets',
       Icons.local_gas_station: 'Fuel',
     };
-
     final incomeCategoryMap = {
       Icons.work_outline: 'Salary',
       Icons.computer: 'Freelance',
@@ -180,10 +375,8 @@ class _MainScreenState extends State<MainScreen> {
       Icons.redeem: 'Gift',
       Icons.attach_money: 'Other',
     };
-
     var selectedIcon = expenseCategoryMap.keys.first;
     String? selectedCategory = expenseCategoryMap[selectedIcon];
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -197,7 +390,6 @@ class _MainScreenState extends State<MainScreen> {
                 ? incomeCategoryMap
                 : expenseCategoryMap;
             final activeIcons = activeCategoryMap.keys.toList();
-
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(ctx).viewInsets.bottom,
@@ -357,117 +549,6 @@ class _MainScreenState extends State<MainScreen> {
           },
         );
       },
-    );
-  }
-
-  Widget _buildBottomNavItem({required IconData icon, required bool isSelected, required VoidCallback onTap}) {
-    return SizedBox(
-      width: 48,
-      height: 48,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: onTap,
-        child: Icon(
-          icon,
-          color: isSelected ? Colors.orange : Colors.grey,
-          size: 30,
-        ),
-      ),
-    );
-  }
-
-  Drawer _buildDrawer() {
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          const UserAccountsDrawerHeader(
-            accountName: Text("Xpense"),
-            accountEmail: Text("Track your expenses"),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(Icons.monetization_on, color: Colors.orange, size: 40),
-            ),
-            decoration: BoxDecoration(color: Colors.orange),
-          ),
-          _buildDrawerSectionTitle("Manage accounts"),
-          ListTile(
-            leading: const Icon(Icons.add_circle_outline),
-            title: const Text('Manage Accounts'),
-            onTap: _navigateToManageAccounts,
-          ),
-          const Divider(),
-          _buildDrawerSectionTitle("Accounts"),
-          ..._accounts.map((account) => ListTile(
-            leading: CircleAvatar(
-              backgroundColor: account.color,
-              radius: 16,
-            ),
-            title: Text(account.name),
-            subtitle: Text(currencyFormatter.format(account.balance)),
-            selected: account == _activeAccount,
-            selectedTileColor: Colors.orange.withOpacity(0.1),
-            onTap: () => _changeActiveAccount(account),
-          )),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDrawerSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Text(
-        title.toUpperCase(),
-        style: TextStyle(
-          color: Colors.grey.shade700,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.account_balance_wallet_outlined,
-              size: 80,
-              color: Colors.grey,
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'No Accounts Found',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Please add an account from the side menu to start tracking your finances.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            const SizedBox(height: 25),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text('Add Your First Account',
-                  style: TextStyle(color: Colors.white)),
-              onPressed: _navigateToManageAccounts,
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  )),
-            )
-          ],
-        ),
-      ),
     );
   }
 }
