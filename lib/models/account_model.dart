@@ -1,13 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 
-class Account {
-  final String name;
+part 'account_model.g.dart';
+
+@HiveType(typeId: 1)
+enum AccountType {
+  @HiveField(0)
+  cash,
+  @HiveField(1)
+  bank,
+  @HiveField(2)
+  investment,
+  @HiveField(3)
+  other,
+}
+
+@HiveType(typeId: 0)
+class Account extends HiveObject {
+  @HiveField(0)
+  String name;
+
+  @HiveField(1)
   double balance;
-  final Color color;
+
+  @HiveField(2)
+  int colorValue;
+
+  @HiveField(3)
+  AccountType type;
+
+  @HiveField(4)
+  String? tags;
+
+  @HiveField(5)
+  double? goalLimit;
+
+  Color get color => Color(colorValue);
 
   Account({
     required this.name,
     this.balance = 0.0,
-    required this.color,
+    required this.colorValue,
+    required this.type,
+    this.tags,
+    this.goalLimit,
   });
 }

@@ -15,9 +15,26 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final ScrollController _scrollController = ScrollController();
 
-  final List<Account> _accounts = [
-    Account(name: "Dompet Pribadi", balance: 500000.0, color: Colors.teal),
-    Account(name: "Rekening Bank", balance: 10000000.0, color: Colors.blue),
+  final List<IconData> _categoryIcons = [
+    Icons.shopping_cart, Icons.fastfood, Icons.airplanemode_active,
+    Icons.receipt, Icons.movie, Icons.health_and_safety,
+    Icons.school, Icons.pets, Icons.home,
+    Icons.train, Icons.phone_android, Icons.local_gas_station,
+  ];
+
+  List<Account> _accounts = [
+    Account(
+      name: "Dompet Pribadi",
+      balance: 500000.0,
+      colorValue: Colors.teal.value,
+      type: AccountType.cash,
+    ),
+    Account(
+      name: "Rekening Bank",
+      balance: 10000000.0,
+      colorValue: Colors.blue.value,
+      type: AccountType.bank,
+    ),
   ];
 
   Account? _activeAccount;
@@ -33,7 +50,6 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     for (var account in _accounts) {
       _accountTransactions[account] = [];
     }
-
     if (_accounts.isNotEmpty) {
       _activeAccount = _accounts[0];
     }
@@ -52,11 +68,27 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     Navigator.pop(context);
   }
 
-  void _navigateToManageAccounts() {
+  void _navigateToManageAccounts() async {
     Navigator.of(context).pop();
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (context) => const ManageAccountsScreen(),
-    ));
+
+    final updatedAccounts = await Navigator.push<List<Account>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ManageAccountsScreen(accounts: _accounts),
+      ),
+    );
+
+    if (updatedAccounts != null) {
+      setState(() {
+        _accounts = updatedAccounts;
+        for (var account in _accounts) {
+          _accountTransactions.putIfAbsent(account, () => []);
+        }
+        if (!_accounts.contains(_activeAccount) && _accounts.isNotEmpty) {
+          _activeAccount = _accounts[0];
+        }
+      });
+    }
   }
 
   void _addTransaction(Transaction transaction) {
@@ -81,83 +113,150 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   void _showAddTransactionSheet(BuildContext context) {
     final descriptionController = TextEditingController();
     final amountController = TextEditingController();
-    var transactionType = TransactionType.expense; // Default
+    var transactionType = TransactionType.expense;
+    var selectedIcon = _categoryIcons[0];
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25.0)),
+      ),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(ctx).viewInsets.bottom,
-                top: 20,
-                left: 20,
-                right: 20,
+                top: 20, left: 20, right: 20,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const Text('Add New Transaction', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: descriptionController,
-                    decoration: const InputDecoration(labelText: 'Description'),
-                  ),
-                  TextField(
-                    controller: amountController,
-                    decoration: const InputDecoration(labelText: 'Amount'),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 20),
-                  ToggleButtons(
-                    isSelected: [
-                      transactionType == TransactionType.income,
-                      transactionType == TransactionType.expense,
-                    ],
-                    onPressed: (index) {
-                      setModalState(() {
-                        transactionType = index == 0 ? TransactionType.income : TransactionType.expense;
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(8.0),
-                    selectedColor: Colors.white,
-                    fillColor: transactionType == TransactionType.income ? Colors.green : Colors.red,
-                    children: const <Widget>[
-                      Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('Income')),
-                      Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('Expense')),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      child: const Text('Save Transaction'),
-                      onPressed: () {
-                        final description = descriptionController.text;
-                        final amount = double.tryParse(amountController.text) ?? 0.0;
-
-                        if (description.isEmpty || amount <= 0) {
-                          return;
-                        }
-
-                        final newTransaction = Transaction(
-                          description: description,
-                          amount: amount,
-                          type: transactionType,
-                          date: DateTime.now(),
-                          icon: Icons.shopping_cart,
-                        );
-
-                        _addTransaction(newTransaction);
-                        Navigator.of(ctx).pop();
-                      },
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Center(
+                      child: Container(
+                        width: 40, height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
+                    const SizedBox(height: 20),
+                    const Text('Add New Transaction', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: descriptionController,
+                      decoration: InputDecoration(
+                        labelText: 'Description',
+                        prefixIcon: const Icon(Icons.description_outlined),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    TextField(
+                      controller: amountController,
+                      decoration: InputDecoration(
+                        labelText: 'Amount',
+                        prefixIcon: const Icon(Icons.attach_money),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 20),
+                    Center(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ToggleButtons(
+                          isSelected: [
+                            transactionType == TransactionType.income,
+                            transactionType == TransactionType.expense,
+                          ],
+                          onPressed: (index) {
+                            setModalState(() {
+                              transactionType = index == 0 ? TransactionType.income : TransactionType.expense;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          selectedColor: Colors.white,
+                          fillColor: transactionType == TransactionType.income ? Colors.green : Colors.red,
+                          borderColor: Colors.grey.shade300,
+                          selectedBorderColor: transactionType == TransactionType.income ? Colors.green : Colors.red,
+                          children: const <Widget>[
+                            Padding(padding: EdgeInsets.symmetric(horizontal: 24), child: Text('Income')),
+                            Padding(padding: EdgeInsets.symmetric(horizontal: 24), child: Text('Expense')),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text('Select Icon', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black54)),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 60,
+                      child: GridView.builder(
+                        scrollDirection: Axis.horizontal,
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 1),
+                        itemCount: _categoryIcons.length,
+                        itemBuilder: (context, index) {
+                          final icon = _categoryIcons[index];
+                          final isSelected = icon == selectedIcon;
+                          return GestureDetector(
+                            onTap: () {
+                              setModalState(() {
+                                selectedIcon = icon;
+                              });
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              decoration: BoxDecoration(
+                                color: isSelected ? Colors.orange.withOpacity(0.2) : Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(15),
+                                border: isSelected ? Border.all(color: Colors.orange, width: 2) : null,
+                              ),
+                              child: Icon(icon, color: isSelected ? Colors.orange : Colors.grey.shade700),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Save Transaction', style: TextStyle(fontSize: 16, color: Colors.white)),
+                        onPressed: () {
+                          final description = descriptionController.text;
+                          final amount = double.tryParse(amountController.text) ?? 0.0;
+
+                          if (description.isEmpty || amount <= 0) return;
+
+                          final newTransaction = Transaction(
+                            description: description,
+                            amount: amount,
+                            type: transactionType,
+                            date: DateTime.now(),
+                            icon: selectedIcon,
+                          );
+
+                          _addTransaction(newTransaction);
+                          Navigator.of(ctx).pop();
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
             );
           },
