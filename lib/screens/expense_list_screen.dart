@@ -56,7 +56,6 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   }
 
   void _navigateToManageAccounts() async {
-    // Safely close the drawer only if it's open
     if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
       Navigator.of(context).pop();
     }
@@ -464,18 +463,35 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
 
   Widget _buildBalanceCard() {
     double balance = _activeAccount?.balance ?? 0;
+    double? budget = _activeAccount?.budget;
 
     final currentTransactions = _activeAccount != null
         ? _accountTransactions[_activeAccount!] ?? []
         : [];
 
+    final now = DateTime.now();
+    final monthlyExpense = currentTransactions
+        .where((t) =>
+    t.type == TransactionType.expense &&
+        t.date.year == now.year &&
+        t.date.month == now.month)
+        .fold(0.0, (sum, item) => sum + item.amount);
+
     final totalIncome = currentTransactions
         .where((t) => t.type == TransactionType.income)
         .fold(0.0, (sum, item) => sum + item.amount);
 
-    final totalExpense = currentTransactions
-        .where((t) => t.type == TransactionType.expense)
-        .fold(0.0, (sum, item) => sum + item.amount);
+    double budgetProgress = 0.0;
+    if (budget != null && budget > 0) {
+      budgetProgress = (monthlyExpense / budget).clamp(0.0, 1.0);
+    }
+
+    Color progressColor = Colors.green;
+    if (budgetProgress >= 0.9) {
+      progressColor = Colors.red;
+    } else if (budgetProgress >= 0.5) {
+      progressColor = Colors.yellow.shade700;
+    }
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -519,9 +535,40 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                   Icons.arrow_downward, "Income", currencyFormatter.format(totalIncome)),
               const SizedBox(width: 30),
               _buildIncomeExpenseItem(
-                  Icons.arrow_upward, "Expense", currencyFormatter.format(totalExpense)),
+                  Icons.arrow_upward, "Expense", currencyFormatter.format(monthlyExpense)),
             ],
-          )
+          ),
+          if (budget != null && budget > 0) ...[
+            const SizedBox(height: 25),
+            const Text(
+              "Monthly Budget",
+              style: TextStyle(fontSize: 16, color: Colors.white70),
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: LinearProgressIndicator(
+                value: budgetProgress,
+                minHeight: 10,
+                backgroundColor: Colors.white.withOpacity(0.3),
+                valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  currencyFormatter.format(monthlyExpense),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  currencyFormatter.format(budget),
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
+            )
+          ]
         ],
       ),
     );

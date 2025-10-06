@@ -35,6 +35,9 @@ class Account extends HiveObject {
   @HiveField(5)
   double? goalLimit;
 
+  @HiveField(6)
+  double? budget;
+
   Color get color => Color(colorValue);
 
   Account({
@@ -44,5 +47,6 @@ class Account extends HiveObject {
     required this.type,
     this.tags,
     this.goalLimit,
+    this.budget,
   });
 }

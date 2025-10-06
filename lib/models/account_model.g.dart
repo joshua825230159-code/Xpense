@@ -1,10 +1,4 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'account_model.dart';
-
-// **************************************************************************
-// TypeAdapterGenerator
-// **************************************************************************
 
 class AccountAdapter extends TypeAdapter<Account> {
   @override
@@ -23,13 +17,14 @@ class AccountAdapter extends TypeAdapter<Account> {
       type: fields[3] as AccountType,
       tags: fields[4] as String?,
       goalLimit: fields[5] as double?,
+      budget: fields[6] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Account obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -41,7 +36,9 @@ class AccountAdapter extends TypeAdapter<Account> {
       ..writeByte(4)
       ..write(obj.tags)
       ..writeByte(5)
-      ..write(obj.goalLimit);
+      ..write(obj.goalLimit)
+      ..writeByte(6)
+      ..write(obj.budget);
   }
 
   @override

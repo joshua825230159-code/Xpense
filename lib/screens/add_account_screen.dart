@@ -11,11 +11,11 @@ class AddAccountScreen extends StatefulWidget {
 class _AddAccountScreenState extends State<AddAccountScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers untuk input text
   final _nameController = TextEditingController();
   final _balanceController = TextEditingController();
   final _tagsController = TextEditingController();
   final _goalController = TextEditingController();
+  final _budgetController = TextEditingController();
 
   AccountType _selectedType = AccountType.cash;
   Color _selectedColor = Colors.teal;
@@ -29,10 +29,11 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       final newAccount = Account(
         name: _nameController.text,
         balance: double.tryParse(_balanceController.text) ?? 0.0,
-        colorValue: _selectedColor.value, // <-- Ubah menjadi .value
+        colorValue: _selectedColor.value,
         type: _selectedType,
         tags: _tagsController.text,
         goalLimit: double.tryParse(_goalController.text),
+        budget: double.tryParse(_budgetController.text),
       );
       Navigator.of(context).pop(newAccount);
     }
@@ -44,6 +45,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     _balanceController.dispose();
     _tagsController.dispose();
     _goalController.dispose();
+    _budgetController.dispose();
     super.dispose();
   }
 
@@ -138,6 +140,12 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
               TextFormField(
                 controller: _tagsController,
                 decoration: const InputDecoration(labelText: 'Tags (optional)'),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _budgetController,
+                decoration: const InputDecoration(labelText: 'Monthly Budget (optional)'),
+                keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 16),
               TextFormField(
