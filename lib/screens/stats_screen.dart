@@ -1,5 +1,3 @@
-// lib/screens/stats_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
@@ -24,7 +22,7 @@ class StatsScreen extends StatefulWidget {
 class _StatsScreenState extends State<StatsScreen> {
   late Map<String, double> _expenseByCategory;
   late double _totalExpense;
-  String _selectedPeriod = 'Monthly'; // State for the dropdown
+  String _selectedPeriod = 'Monthly';
 
   final List<Color> _categoryColors = [
     Colors.orange.shade400,
@@ -212,7 +210,6 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  // --- METHOD INI TELAH DIPERBARUI ---
   Widget _buildExpensesList() {
     final currencyFormatter =
     NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0);
@@ -233,13 +230,11 @@ class _StatsScreenState extends State<StatsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Judul sekarang ada di dalam Container
           const Text(
             'Expenses List',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          // Menggunakan spread operator (...) untuk memasukkan daftar item
           ..._expenseByCategory.entries.mapIndexed((index, entry) {
             final percentage = (_totalExpense > 0) ? (entry.value / _totalExpense) : 0.0;
             final color = _categoryColors[index % _categoryColors.length];

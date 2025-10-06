@@ -1,3 +1,5 @@
+// lib/screens/expense_list_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/account_model.dart';
@@ -32,44 +34,13 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   final currencyFormatter =
   NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
 
+  // --- initState DIBERSIHKAN DARI DATA DUMMY ---
   @override
   void initState() {
     super.initState();
-    _initializeDummyData();
+    // Aplikasi sekarang dimulai dengan state kosong
   }
-
-  void _initializeDummyData() {
-    var cashAccount = Account(name: 'Cash', colorValue: Colors.green.value, type: AccountType.cash, budget: 2000000);
-    var bankAccount = Account(name: 'Bank BCA', colorValue: Colors.blue.value, type: AccountType.bank, budget: 5000000);
-
-    _accounts = [cashAccount, bankAccount];
-    _activeAccount = _accounts[0];
-
-    _accountTransactions[cashAccount] = [
-      Transaction(description: 'Groceries', amount: 250000, type: TransactionType.expense, date: DateTime.now().subtract(const Duration(days: 1)), iconValue: Icons.shopping_cart.codePoint, category: 'Groceries'),
-      Transaction(description: 'Lunch', amount: 50000, type: TransactionType.expense, date: DateTime.now().subtract(const Duration(days: 2)), iconValue: Icons.fastfood.codePoint, category: 'Food'),
-      Transaction(description: 'Salary', amount: 5000000, type: TransactionType.income, date: DateTime.now().subtract(const Duration(days: 5)), iconValue: Icons.attach_money.codePoint, category: 'Salary'),
-      Transaction(description: 'Dinner', amount: 75000, type: TransactionType.expense, date: DateTime.now().subtract(const Duration(days: 3)), iconValue: Icons.fastfood.codePoint, category: 'Food'),
-    ];
-    _accountTransactions[bankAccount] = [
-      Transaction(description: 'Internet Bill', amount: 350000, type: TransactionType.expense, date: DateTime.now(), iconValue: Icons.receipt.codePoint, category: 'Bills'),
-      Transaction(description: 'Movie Tickets', amount: 100000, type: TransactionType.expense, date: DateTime.now().subtract(const Duration(days: 4)), iconValue: Icons.movie.codePoint, category: 'Entertainment'),
-      Transaction(description: 'Freelance Project', amount: 2000000, type: TransactionType.income, date: DateTime.now().subtract(const Duration(days: 10)), iconValue: Icons.work.codePoint, category: 'Freelance'),
-    ];
-
-    for (var account in _accounts) {
-      double balance = 0;
-      final transactions = _accountTransactions[account] ?? [];
-      for (var t in transactions) {
-        if (t.type == TransactionType.income) {
-          balance += t.amount;
-        } else {
-          balance -= t.amount;
-        }
-      }
-      account.balance = balance;
-    }
-  }
+  // ---------------------------------------------
 
   @override
   void dispose() {
@@ -99,9 +70,11 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     if (updatedAccounts != null) {
       setState(() {
         _accounts = updatedAccounts;
+        // Inisialisasi map transaksi untuk akun baru jika ada
         for (var account in _accounts) {
           _accountTransactions.putIfAbsent(account, () => []);
         }
+        // Atur akun aktif
         if (!_accounts.contains(_activeAccount) && _accounts.isNotEmpty) {
           _activeAccount = _accounts[0];
         } else if (_accounts.isEmpty) {
@@ -263,15 +236,13 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                                 children: [
                                   Icon(icon, color: isSelected ? Colors.orange : Colors.grey.shade700),
                                   const SizedBox(height: 2),
-                                  // --- PERUBAHAN PADA WIDGET TEXT DI BAWAH INI ---
                                   Text(
                                     categoryMap[icon]!,
                                     style: TextStyle(fontSize: 10, color: isSelected ? Colors.orange : Colors.grey.shade700),
-                                    maxLines: 1, // Memastikan teks hanya satu baris
-                                    overflow: TextOverflow.ellipsis, // Menampilkan '...' jika terpotong
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     textAlign: TextAlign.center,
                                   ),
-                                  // --- AKHIR DARI PERUBAHAN ---
                                 ],
                               ),
                             ),

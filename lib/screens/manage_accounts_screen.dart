@@ -14,11 +14,9 @@ class ManageAccountsScreen extends StatefulWidget {
 class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
   late List<Account> _accounts;
 
-  // --- STATE BARU UNTUK FILTER TAGS ---
   late List<Account> _filteredAccounts;
   List<String> _allTags = [];
   String? _selectedTag;
-  // ------------------------------------
 
   @override
   void initState() {
@@ -28,9 +26,7 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
     _extractAllTags();
   }
 
-  // --- FUNGSI BARU UNTUK MENGELOLA FILTER ---
   void _extractAllTags() {
-    // Kumpulkan semua tag unik dari semua akun
     final allTagsSet = <String>{};
     for (var account in _accounts) {
       allTagsSet.addAll(account.tags);
@@ -43,10 +39,8 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
   void _filterAccounts() {
     setState(() {
       if (_selectedTag == null) {
-        // Jika tidak ada tag yang dipilih, tampilkan semua
         _filteredAccounts = List<Account>.from(_accounts);
       } else {
-        // Jika ada, filter berdasarkan tag yang dipilih
         _filteredAccounts = _accounts
             .where((account) => account.tags.contains(_selectedTag!))
             .toList();
@@ -71,7 +65,6 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
   }
 
   void _navigateAndEditAccount(BuildContext context, Account account, int index) async {
-    // Cari index asli di list _accounts, bukan di _filteredAccounts
     final originalIndex = _accounts.indexWhere((acc) => acc.key == account.key);
     if (originalIndex == -1) return;
 
@@ -93,7 +86,7 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
 
   void _deleteAccount(Account accountToDelete) {
     setState(() {
-      _accounts.removeWhere((account) => account.key == accountToDelete.key);
+      _accounts.remove(accountToDelete);
     });
     _extractAllTags();
     _filterAccounts();
@@ -136,12 +129,9 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text("Manage Accounts"),
-          // Tombol filter sebelumnya dihapus dari sini
         ),
-        // --- BODY DIUBAH UNTUK MENAMPUNG UI TAGS DAN LIST ---
         body: Column(
           children: [
-            // Widget untuk menampilkan filter tags
             if (_allTags.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
@@ -153,13 +143,11 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                     separatorBuilder: (context, index) => const SizedBox(width: 8),
                     itemBuilder: (context, index) {
                       final tag = _allTags[index];
-                      return ChoiceChip( // <-- Ini adalah widget tag-nya
+                      return ChoiceChip(
                         label: Text(tag),
                         selected: _selectedTag == tag,
                         onSelected: (isSelected) {
                           setState(() {
-                            // Jika chip dipilih, set _selectedTag.
-                            // Jika pilihan dibatalkan, set jadi null.
                             _selectedTag = isSelected ? tag : null;
                           });
                           _filterAccounts();
@@ -170,10 +158,8 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                 ),
               ),
 
-            // Widget untuk menampilkan daftar akun
             Expanded(
               child: ListView.builder(
-                // Gunakan _filteredAccounts, bukan _accounts
                 itemCount: _filteredAccounts.length,
                 itemBuilder: (context, index) {
                   final account = _filteredAccounts[index];
@@ -206,7 +192,6 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
             ),
           ],
         ),
-        // ----------------------------------------------------
         floatingActionButton: FloatingActionButton(
           onPressed: () => _navigateAndAddAccount(context),
           child: const Icon(Icons.add),

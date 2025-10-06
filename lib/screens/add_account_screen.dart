@@ -19,7 +19,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   final _goalController = TextEditingController();
   final _budgetController = TextEditingController();
 
-  // State untuk menyimpan daftar tags
   List<String> _tags = [];
 
   AccountType _selectedType = AccountType.cash;
@@ -35,7 +34,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     if (widget.account != null) {
       _nameController.text = widget.account!.name;
       _balanceController.text = widget.account!.balance.toString();
-      // Salin tags dari widget ke state lokal
       _tags = List<String>.from(widget.account!.tags);
       _goalController.text = widget.account!.goalLimit?.toString() ?? '';
       _budgetController.text = widget.account!.budget?.toString() ?? '';
@@ -51,7 +49,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         balance: double.tryParse(_balanceController.text) ?? 0.0,
         colorValue: _selectedColor.value,
         type: _selectedType,
-        // Simpan list tags, bukan teks dari controller
         tags: _tags,
         goalLimit: double.tryParse(_goalController.text),
         budget: double.tryParse(_budgetController.text),
@@ -60,7 +57,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     }
   }
 
-  // --- FUNGSI BARU UNTUK MENGELOLA TAGS ---
   void _addTag() {
     final tagText = _tagInputController.text.trim();
     if (tagText.isNotEmpty && !_tags.contains(tagText)) {
@@ -76,7 +72,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       _tags.remove(tagToRemove);
     });
   }
-  // -----------------------------------------
 
   @override
   void dispose() {
@@ -182,8 +177,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // --- UI BARU UNTUK TAGS ---
               const Text('Tags (optional)', style: TextStyle(fontSize: 16)),
               const SizedBox(height: 8),
               Wrap(
@@ -212,7 +205,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                   ),
                 ],
               ),
-              // ---------------------------
 
               const SizedBox(height: 16),
               TextFormField(

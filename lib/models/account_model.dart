@@ -28,10 +28,8 @@ class Account extends HiveObject {
   @HiveField(3)
   AccountType type;
 
-  // --- DIUBAH dari String? menjadi List<String> ---
   @HiveField(4)
   List<String> tags;
-  // ---------------------------------------------
 
   @HiveField(5)
   double? goalLimit;
@@ -46,8 +44,8 @@ class Account extends HiveObject {
     this.balance = 0.0,
     required this.colorValue,
     required this.type,
-    List<String>? tags, // Terima List<String> yang bisa null
+    List<String>? tags,
     this.goalLimit,
     this.budget,
-  }) : this.tags = tags ?? []; // Jika null, gunakan list kosong
+  }) : this.tags = tags ?? [];
 }
