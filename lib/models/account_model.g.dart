@@ -24,13 +24,14 @@ class AccountAdapter extends TypeAdapter<Account> {
       tags: (fields[4] as List?)?.cast<String>(),
       goalLimit: fields[5] as double?,
       budget: fields[6] as double?,
+      id: fields[7] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Account obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class AccountAdapter extends TypeAdapter<Account> {
       ..writeByte(5)
       ..write(obj.goalLimit)
       ..writeByte(6)
-      ..write(obj.budget);
+      ..write(obj.budget)
+      ..writeByte(7)
+      ..write(obj.id);
   }
 
   @override

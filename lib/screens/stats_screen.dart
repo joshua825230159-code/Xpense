@@ -8,11 +8,13 @@ import '../models/transaction_model.dart';
 class StatsScreen extends StatefulWidget {
   final Account account;
   final List<Transaction> transactions;
+  final String selectedPeriod;
 
   const StatsScreen({
     super.key,
     required this.account,
     required this.transactions,
+    required this.selectedPeriod,
   });
 
   @override
@@ -22,7 +24,8 @@ class StatsScreen extends StatefulWidget {
 class _StatsScreenState extends State<StatsScreen> {
   late Map<String, double> _expenseByCategory;
   late double _totalExpense;
-  String _selectedPeriod = 'Monthly';
+
+  int _touchedIndex = -1;
 
   final List<Color> _categoryColors = [
     Colors.orange.shade400,
@@ -60,17 +63,50 @@ class _StatsScreenState extends State<StatsScreen> {
   @override
   void didUpdateWidget(covariant StatsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.transactions != oldWidget.transactions || widget.account != oldWidget.account) {
+    if (widget.transactions != oldWidget.transactions ||
+        widget.account != oldWidget.account ||
+        widget.selectedPeriod != oldWidget.selectedPeriod) {
       _processTransactionData();
     }
   }
 
   void _processTransactionData() {
+    final now = DateTime.now();
+    List<Transaction> periodTransactions;
+
+    switch (widget.selectedPeriod) {
+      case 'Daily':
+        periodTransactions = widget.transactions.where((t) {
+          return t.date.year == now.year &&
+              t.date.month == now.month &&
+              t.date.day == now.day;
+        }).toList();
+        break;
+      case 'Weekly':
+        final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+        final firstDayOfWeek = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+        periodTransactions = widget.transactions.where((t) {
+          return t.date.isAfter(firstDayOfWeek.subtract(const Duration(seconds: 1)));
+        }).toList();
+        break;
+      case 'Yearly':
+        periodTransactions = widget.transactions.where((t) {
+          return t.date.year == now.year;
+        }).toList();
+        break;
+      case 'Monthly':
+      default:
+        periodTransactions = widget.transactions.where((t) {
+          return t.date.year == now.year && t.date.month == now.month;
+        }).toList();
+        break;
+    }
+
     final data = <String, double>{};
     _totalExpense = 0.0;
 
     setState(() {
-      for (var transaction in widget.transactions) {
+      for (var transaction in periodTransactions) {
         if (transaction.type == TransactionType.expense) {
           final category = transaction.category ?? 'Uncategorized';
           data[category] = (data[category] ?? 0) + transaction.amount;
@@ -88,33 +124,36 @@ class _StatsScreenState extends State<StatsScreen> {
   @override
   Widget build(BuildContext context) {
     return _expenseByCategory.isEmpty
-        ? const Center(
-      child: Text(
-        'No expense data available.',
-        style: TextStyle(fontSize: 18, color: Colors.grey),
+        ? Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.pie_chart_outline, size: 60, color: Colors.grey),
+          const SizedBox(height: 16),
+          Text(
+            'No expense data for this period.',
+            style: TextStyle(fontSize: 18, color: Colors.grey.shade700),
+          ),
+        ],
       ),
     )
-        : SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildStatisticsCard(),
-          const SizedBox(height: 24),
-          _buildExpensesList(),
-        ],
+        : Container(
+      color: Colors.grey.shade50,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildStatisticsCard(),
+            const SizedBox(height: 15),
+            _buildExpensesList(),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildStatisticsCard() {
-    final Map<String, IconData> periodIcons = {
-      'Daily': Icons.today,
-      'Weekly': Icons.view_week_outlined,
-      'Monthly': Icons.calendar_month_outlined,
-      'Yearly': Icons.calendar_today_outlined,
-    };
-
     return Container(
       padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
@@ -129,80 +168,105 @@ class _StatsScreenState extends State<StatsScreen> {
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Expense Statistics',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedPeriod,
-                    elevation: 4,
-                    dropdownColor: Colors.white,
-                    borderRadius: BorderRadius.circular(12.0),
-                    items: periodIcons.entries.map((entry) {
-                      final String value = entry.key;
-                      final IconData icon = entry.value;
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Row(
-                          children: [
-                            Icon(icon, size: 18, color: Colors.grey.shade700),
-                            const SizedBox(width: 8),
-                            Text(
-                              value,
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (newValue) {
-                      setState(() {
-                        _selectedPeriod = newValue!;
-                      });
-                    },
-                  ),
-                ),
-              ),
-            ],
+          const Text(
+            'Expense Statistics',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 6),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(
-                height: 150,
-                width: 150,
-                child: PieChart(
-                  PieChartData(
-                    sections: _getChartSections(),
-                    centerSpaceRadius: 40,
-                    sectionsSpace: 2,
+              Expanded(
+                child: Container(
+                  height: 160,
+                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Scrollbar(
+                    thumbVisibility: true,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.only(right: 12.0),
+                      itemCount: _expenseByCategory.length,
+                      itemBuilder: (context, index) {
+                        final entry = _expenseByCategory.entries.elementAt(index);
+                        final percentage = (_totalExpense > 0)
+                            ? (entry.value / _totalExpense)
+                            : 0.0;
+                        final color = _categoryColors[index % _categoryColors.length];
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4.0),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  entry.key,
+                                  style: const TextStyle(fontWeight: FontWeight.w500),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Text(
+                                NumberFormat.percentPattern().format(percentage),
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: _expenseByCategory.entries.mapIndexed((index, entry) {
-                    final percentage = (_totalExpense > 0) ? (entry.value / _totalExpense) : 0.0;
-                    return _buildLegendItem(
-                      _categoryColors[index % _categoryColors.length],
-                      entry.key,
-                      percentage,
-                    );
-                  }).toList(),
+              SizedBox(
+                width: 140,
+                height: 140,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    PieChart(
+                      PieChartData(
+                        pieTouchData: PieTouchData(
+                          touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                            setState(() {
+                              if (!event.isInterestedForInteractions ||
+                                  pieTouchResponse == null ||
+                                  pieTouchResponse.touchedSection == null) {
+                                _touchedIndex = -1;
+                                return;
+                              }
+                              _touchedIndex = pieTouchResponse
+                                  .touchedSection!.touchedSectionIndex;
+                            });
+                          },
+                        ),
+                        sections: _getChartSections(),
+                        centerSpaceRadius: 40,
+                        sectionsSpace: 2,
+                      ),
+                    ),
+                    Text(
+                      '100%',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -210,6 +274,21 @@ class _StatsScreenState extends State<StatsScreen> {
         ],
       ),
     );
+  }
+
+
+  List<PieChartSectionData> _getChartSections() {
+    return _expenseByCategory.entries.mapIndexed((index, entry) {
+      final isTouched = index == _touchedIndex;
+      final radius = isTouched ? 34.0 : 28.0;
+
+      return PieChartSectionData(
+        color: _categoryColors[index % _categoryColors.length],
+        value: entry.value,
+        radius: radius,
+        showTitle: false,
+      );
+    }).toList();
   }
 
   Widget _buildExpensesList() {
@@ -236,14 +315,25 @@ class _StatsScreenState extends State<StatsScreen> {
             'Expenses List',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 5),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Total for ${widget.selectedPeriod}', style: TextStyle(color: Colors.grey.shade600)),
+              Text(
+                NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_totalExpense),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
           ..._expenseByCategory.entries.mapIndexed((index, entry) {
             final percentage = (_totalExpense > 0) ? (entry.value / _totalExpense) : 0.0;
             final color = _categoryColors[index % _categoryColors.length];
             final icon = _categoryIcons[entry.key] ?? Icons.category;
 
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
               child: Row(
                 children: [
                   Container(
@@ -313,47 +403,5 @@ class _StatsScreenState extends State<StatsScreen> {
         ],
       ),
     );
-  }
-
-  Widget _buildLegendItem(Color color, String text, double percentage) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(text),
-          const SizedBox(width: 4),
-          Text(
-            NumberFormat.percentPattern().format(percentage),
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<PieChartSectionData> _getChartSections() {
-    return _expenseByCategory.entries.mapIndexed((index, entry) {
-      final percentage = (_totalExpense > 0) ? (entry.value / _totalExpense) * 100 : 0.0;
-      return PieChartSectionData(
-        color: _categoryColors[index % _categoryColors.length],
-        value: entry.value,
-        title: '${percentage.toStringAsFixed(0)}%',
-        radius: 50,
-        titleStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      );
-    }).toList();
   }
 }

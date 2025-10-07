@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:uuid/uuid.dart';
+import 'package:equatable/equatable.dart';
+
 part 'account_model.g.dart';
 
 @HiveType(typeId: 1)
@@ -15,7 +18,7 @@ enum AccountType {
 }
 
 @HiveType(typeId: 0)
-class Account extends HiveObject {
+class Account extends HiveObject with EquatableMixin {
   @HiveField(0)
   String name;
 
@@ -37,6 +40,9 @@ class Account extends HiveObject {
   @HiveField(6)
   double? budget;
 
+  @HiveField(7)
+  final String id;
+
   Color get color => Color(colorValue);
 
   Account({
@@ -47,5 +53,13 @@ class Account extends HiveObject {
     List<String>? tags,
     this.goalLimit,
     this.budget,
-  }) : this.tags = tags ?? [];
+    String? id,
+  })  : this.tags = tags ?? [],
+        this.id = id ?? const Uuid().v4();
+
+  @override
+  List<Object?> get props => [id];
+
+  @override
+  bool get stringify => true;
 }

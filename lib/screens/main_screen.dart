@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/account_model.dart';
 import '../models/transaction_model.dart';
+import 'add_account_screen.dart';
 import 'expense_list_screen.dart';
 import 'manage_accounts_screen.dart';
 import 'stats_screen.dart';
+import 'transaction_detail_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -18,16 +20,20 @@ class _MainScreenState extends State<MainScreen> {
 
   List<Account> _accounts = [];
   Account? _activeAccount;
-  final Map<Account, List<Transaction>> _accountTransactions = {};
+  Map<Account, List<Transaction>> _accountTransactions = {};
 
   final currencyFormatter =
   NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
 
   int _selectedIndex = 0;
+  String _selectedPeriod = 'Monthly';
 
   bool _isSearching = false;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+
+  bool _isSelectionMode = false;
+  final Set<Transaction> _selectedTransactions = {};
 
   @override
   void initState() {
@@ -37,12 +43,74 @@ class _MainScreenState extends State<MainScreen> {
         _updateSearchQuery('');
       }
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_accounts.isEmpty) {
+        _navigateToAddAccount();
+      }
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _navigateToAddAccount() async {
+    final newAccount = await Navigator.push<Account>(
+      context,
+      MaterialPageRoute(builder: (context) => const AddAccountScreen()),
+    );
+
+    if (newAccount != null) {
+      setState(() {
+        _accounts.add(newAccount);
+        _activeAccount = newAccount;
+        _accountTransactions.putIfAbsent(newAccount, () => []);
+      });
+    }
+  }
+
+
+  void _navigateToManageAccounts() async {
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      Navigator.of(context).pop();
+    }
+    final updatedAccounts = await Navigator.push<List<Account>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ManageAccountsScreen(accounts: _accounts),
+      ),
+    );
+
+    if (updatedAccounts != null) {
+      setState(() {
+        final newTransactionMap = <Account, List<Transaction>>{};
+        for (final newAccount in updatedAccounts) {
+          final existingTransactions = _accountTransactions[newAccount];
+          newTransactionMap[newAccount] = existingTransactions ?? [];
+        }
+
+        Account? newActiveAccount;
+        if (_activeAccount != null) {
+          for (final account in updatedAccounts) {
+            if (account.id == _activeAccount!.id) {
+              newActiveAccount = account;
+              break;
+            }
+          }
+        }
+
+        if (newActiveAccount == null && updatedAccounts.isNotEmpty) {
+          newActiveAccount = updatedAccounts.first;
+        }
+
+        _accounts = updatedAccounts;
+        _accountTransactions = newTransactionMap;
+        _activeAccount = newActiveAccount;
+      });
+    }
   }
 
   void _startSearch() {
@@ -65,42 +133,110 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  void _changeActiveAccount(Account account) {
+  void _onSelectionChanged(Set<Transaction> selected) {
     setState(() {
-      _activeAccount = account;
-      if (_isSearching) _stopSearch();
+      _selectedTransactions.clear();
+      _selectedTransactions.addAll(selected);
+      _isSelectionMode = _selectedTransactions.isNotEmpty;
     });
-    Navigator.pop(context);
   }
 
-  void _navigateToManageAccounts() async {
-    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
-      Navigator.of(context).pop();
-    }
-    final updatedAccounts = await Navigator.push<List<Account>>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ManageAccountsScreen(accounts: _accounts),
+  void _exitSelectionMode() {
+    setState(() {
+      _selectedTransactions.clear();
+      _isSelectionMode = false;
+    });
+  }
+
+  void _handleDeleteTransactions() async {
+    final bool? confirmed = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Hapus'),
+        content: Text('Anda yakin ingin menghapus ${_selectedTransactions.length} transaksi? Aksi ini tidak dapat dibatalkan.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Hapus'),
+          ),
+        ],
       ),
     );
-    if (updatedAccounts != null) {
+
+    if (confirmed == true) {
       setState(() {
-        _accounts = updatedAccounts;
-        for (var account in _accounts) {
-          _accountTransactions.putIfAbsent(account, () => []);
+        if (_activeAccount == null) return;
+
+        for (var transaction in _selectedTransactions) {
+          if (transaction.type == TransactionType.income) {
+            _activeAccount!.balance -= transaction.amount;
+          } else {
+            _activeAccount!.balance += transaction.amount;
+          }
         }
-        if (!_accounts.contains(_activeAccount) && _accounts.isNotEmpty) {
-          _activeAccount = _accounts[0];
-        } else if (_accounts.isEmpty) {
-          _activeAccount = null;
+        _accountTransactions[_activeAccount!]?.removeWhere(
+              (t) => _selectedTransactions.contains(t),
+        );
+        _exitSelectionMode();
+      });
+    }
+  }
+
+  void _navigateToTransactionDetail(Transaction transaction) async {
+    if (_isSelectionMode) return;
+
+    final Transaction originalTransaction = transaction;
+    final List<Transaction>? transactionList = _accountTransactions[_activeAccount!];
+
+    if (transactionList == null) return;
+
+    final updatedTransaction = await Navigator.push<Transaction>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TransactionDetailScreen(transaction: transaction),
+      ),
+    );
+
+    if (updatedTransaction != null) {
+      setState(() {
+        final index = transactionList.indexOf(originalTransaction);
+        if (index != -1) {
+          if (originalTransaction.type == TransactionType.income) {
+            _activeAccount!.balance -= originalTransaction.amount;
+          } else {
+            _activeAccount!.balance += originalTransaction.amount;
+          }
+
+          if (updatedTransaction.type == TransactionType.income) {
+            _activeAccount!.balance += updatedTransaction.amount;
+          } else {
+            _activeAccount!.balance -= updatedTransaction.amount;
+          }
+
+          transactionList[index] = updatedTransaction;
         }
       });
     }
   }
 
+  void _changeActiveAccount(Account account) {
+    setState(() {
+      _activeAccount = account;
+      if (_isSearching) _stopSearch();
+      if (_isSelectionMode) _exitSelectionMode();
+    });
+    Navigator.pop(context);
+  }
+
   void _addTransaction(Transaction transaction) {
     setState(() {
       if (_activeAccount != null) {
+        _accountTransactions.putIfAbsent(_activeAccount!, () => []);
         _accountTransactions[_activeAccount!]?.insert(0, transaction);
         if (transaction.type == TransactionType.income) {
           _activeAccount!.balance += transaction.amount;
@@ -127,24 +263,30 @@ class _MainScreenState extends State<MainScreen> {
       return transaction.description.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
 
-
     final List<Widget> pages = [
       ExpenseListScreen(
         activeAccount: _activeAccount,
         transactions: filteredTransactions,
         isSearching: _isSearching,
         searchQuery: _searchQuery,
+        selectedTransactions: _selectedTransactions,
+        onSelectionChanged: _onSelectionChanged,
+        onDeleteTransactions: (Set<Transaction> toDelete) {},
+        onTransactionTap: _navigateToTransactionDetail,
       ),
       if (_activeAccount != null)
         StatsScreen(
           account: _activeAccount!,
           transactions: List.from(allTransactions),
+          selectedPeriod: _selectedPeriod,
         ),
     ];
 
     return Scaffold(
       key: _scaffoldKey,
-      appBar: _isSearching ? _buildSearchAppBar() : _buildDefaultAppBar(),
+      appBar: _isSelectionMode
+          ? _buildSelectionAppBar()
+          : (_isSearching ? _buildSearchAppBar() : _buildDefaultAppBar()),
       drawer: _buildDrawer(),
       body: _accounts.isEmpty
           ? _buildEmptyState()
@@ -152,7 +294,7 @@ class _MainScreenState extends State<MainScreen> {
         index: _selectedIndex,
         children: pages,
       ),
-      floatingActionButton: (_accounts.isEmpty || _isSearching)
+      floatingActionButton: (_accounts.isEmpty || _isSearching || _isSelectionMode)
           ? null
           : FloatingActionButton(
         onPressed: () => _showAddTransactionSheet(context),
@@ -186,7 +328,30 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  AppBar _buildSelectionAppBar() {
+    return AppBar(
+      title: Text('${_selectedTransactions.length} dipilih'),
+      leading: IconButton(
+        icon: const Icon(Icons.close),
+        onPressed: _exitSelectionMode,
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.delete_outline),
+          onPressed: _handleDeleteTransactions,
+        ),
+      ],
+    );
+  }
+
   AppBar _buildDefaultAppBar() {
+    final Map<String, IconData> periodIcons = {
+      'Daily': Icons.today,
+      'Weekly': Icons.view_week_outlined,
+      'Monthly': Icons.calendar_month_outlined,
+      'Yearly': Icons.calendar_today_outlined,
+    };
+
     return AppBar(
       backgroundColor: const Color(0xFFF6F7F9),
       elevation: 0,
@@ -204,6 +369,43 @@ class _MainScreenState extends State<MainScreen> {
           IconButton(
             icon: const Icon(Icons.search, size: 28, color: Colors.black),
             onPressed: _startSearch,
+          ),
+
+        if (_selectedIndex == 1)
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF6F7F9),
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedPeriod,
+                  elevation: 4,
+                  dropdownColor: Colors.white,
+                  borderRadius: BorderRadius.circular(12.0),
+                  items: periodIcons.entries.map((entry) {
+                    return DropdownMenuItem<String>(
+                      value: entry.key,
+                      child: Row(
+                        children: [
+                          Icon(entry.value, size: 18, color: Colors.grey.shade700),
+                          const SizedBox(width: 8),
+                          Text(entry.key, style: const TextStyle(fontSize: 14)),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (newValue) {
+                    setState(() {
+                      _selectedPeriod = newValue!;
+                    });
+                  },
+                ),
+              ),
+            ),
           ),
       ],
     );
@@ -334,7 +536,7 @@ class _MainScreenState extends State<MainScreen> {
               icon: const Icon(Icons.add, color: Colors.white),
               label: const Text('Add Your First Account',
                   style: TextStyle(color: Colors.white)),
-              onPressed: _navigateToManageAccounts,
+              onPressed: _navigateToAddAccount,
               style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
                   padding:
@@ -445,10 +647,12 @@ class _MainScreenState extends State<MainScreen> {
                           onPressed: (index) {
                             setModalState(() {
                               transactionType = index == 0 ? TransactionType.income : TransactionType.expense;
-                              selectedIcon = transactionType == TransactionType.income
-                                  ? incomeCategoryMap.keys.first
-                                  : expenseCategoryMap.keys.first;
-                              selectedCategory = activeCategoryMap[selectedIcon];
+                              final newMap = transactionType == TransactionType.income
+                                  ? incomeCategoryMap
+                                  : expenseCategoryMap;
+
+                              selectedIcon = newMap.keys.first;
+                              selectedCategory = newMap[selectedIcon];
                             });
                           },
                           borderRadius: BorderRadius.circular(12),

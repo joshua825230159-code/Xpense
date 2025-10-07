@@ -88,7 +88,7 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
     final originalIndex = _accounts.indexOf(account);
     if (originalIndex == -1) return;
 
-    final updatedAccount = await Navigator.push<Account>(
+    final resultAccount = await Navigator.push<Account>(
       context,
       MaterialPageRoute(
         builder: (context) => AddAccountScreen(
@@ -98,8 +98,19 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
       ),
     );
 
-    if (updatedAccount != null) {
+    if (resultAccount != null) {
       setState(() {
+        final updatedAccount = Account(
+          id: account.id,
+          name: resultAccount.name,
+          balance: resultAccount.balance,
+          colorValue: resultAccount.colorValue,
+          type: resultAccount.type,
+          tags: resultAccount.tags,
+          goalLimit: resultAccount.goalLimit,
+          budget: resultAccount.budget,
+        );
+
         _accounts[originalIndex] = updatedAccount;
         _extractAllTags();
         _filterAccounts();
@@ -334,7 +345,7 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
         floatingActionButton: FloatingActionButton(
           onPressed: _isSelectionMode ? null : () => _navigateAndAddAccount(context),
           backgroundColor: _isSelectionMode ? Colors.grey : Colors.orange,
-          child: const Icon(Icons.add),
+          child: const Icon(Icons.add, color: Colors.white),
         ),
       ),
     );
