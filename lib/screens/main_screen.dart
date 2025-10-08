@@ -60,10 +60,32 @@ class _MainScreenState extends State<MainScreen> {
     super.dispose();
   }
 
+  void _showSortDialog() {
+    final periods = ['Daily', 'Weekly', 'Monthly', 'Yearly'];
+    showDialog(
+      context: context,
+      builder: (context) {
+        return SimpleDialog(
+          title: const Text('Select Period'),
+          children: periods.map((period) {
+            return SimpleDialogOption(
+              onPressed: () {
+                setState(() {
+                  _selectedPeriod = period;
+                });
+                Navigator.pop(context);
+              },
+              child: Text(period),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
   void _showExportDialog() {
-    final List<Transaction> allTransactions = _activeAccount != null
-        ? _accountTransactions[_activeAccount!] ?? []
-        : [];
+    final List<Transaction> allTransactions =
+    _activeAccount != null ? _accountTransactions[_activeAccount!] ?? [] : [];
 
     final now = DateTime.now();
     List<Transaction> periodTransactions;
@@ -78,9 +100,11 @@ class _MainScreenState extends State<MainScreen> {
         break;
       case 'Weekly':
         final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-        final firstDayOfWeek = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+        final firstDayOfWeek =
+        DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
         periodTransactions = allTransactions.where((t) {
-          return t.date.isAfter(firstDayOfWeek.subtract(const Duration(seconds: 1)));
+          return t.date
+              .isAfter(firstDayOfWeek.subtract(const Duration(seconds: 1)));
         }).toList();
         break;
       case 'Yearly':
@@ -100,7 +124,8 @@ class _MainScreenState extends State<MainScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Export Expenses'),
-        content: const Text('Choose the format to export your expenses for the selected period.'),
+        content: const Text(
+            'Choose the format to export your expenses for the selected period.'),
         actions: [
           TextButton(
             onPressed: () {
@@ -135,7 +160,6 @@ class _MainScreenState extends State<MainScreen> {
       });
     }
   }
-
 
   void _navigateToManageAccounts() async {
     if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
@@ -217,7 +241,8 @@ class _MainScreenState extends State<MainScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Konfirmasi Hapus'),
-        content: Text('Anda yakin ingin menghapus ${_selectedTransactions.length} transaksi? Aksi ini tidak dapat dibatalkan.'),
+        content: Text(
+            'Anda yakin ingin menghapus ${_selectedTransactions.length} transaksi? Aksi ini tidak dapat dibatalkan.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -255,7 +280,8 @@ class _MainScreenState extends State<MainScreen> {
     if (_isSelectionMode) return;
 
     final Transaction originalTransaction = transaction;
-    final List<Transaction>? transactionList = _accountTransactions[_activeAccount!];
+    final List<Transaction>? transactionList =
+    _accountTransactions[_activeAccount!];
 
     if (transactionList == null) return;
 
@@ -319,12 +345,13 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Transaction> allTransactions = _activeAccount != null
-        ? _accountTransactions[_activeAccount!] ?? []
-        : [];
+    final List<Transaction> allTransactions =
+    _activeAccount != null ? _accountTransactions[_activeAccount!] ?? [] : [];
 
     final filteredTransactions = allTransactions.where((transaction) {
-      return transaction.description.toLowerCase().contains(_searchQuery.toLowerCase());
+      return transaction.description
+          .toLowerCase()
+          .contains(_searchQuery.toLowerCase());
     }).toList();
 
     final List<Widget> pages = [
@@ -358,7 +385,8 @@ class _MainScreenState extends State<MainScreen> {
         index: _selectedIndex,
         children: pages,
       ),
-      floatingActionButton: (_accounts.isEmpty || _isSearching || _isSelectionMode)
+      floatingActionButton:
+      (_accounts.isEmpty || _isSearching || _isSelectionMode)
           ? null
           : FloatingActionButton(
         onPressed: () => _showAddTransactionSheet(context),
@@ -409,13 +437,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   AppBar _buildDefaultAppBar() {
-    final Map<String, IconData> periodIcons = {
-      'Daily': Icons.today,
-      'Weekly': Icons.view_week_outlined,
-      'Monthly': Icons.calendar_month_outlined,
-      'Yearly': Icons.calendar_today_outlined,
-    };
-
     return AppBar(
       backgroundColor: const Color(0xFFF6F7F9),
       elevation: 0,
@@ -424,8 +445,11 @@ class _MainScreenState extends State<MainScreen> {
         onPressed: () => _scaffoldKey.currentState?.openDrawer(),
       ),
       title: Text(
-        _selectedIndex == 0 ? (_activeAccount?.name ?? "No Account") : "Statistics",
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+        _selectedIndex == 0
+            ? (_activeAccount?.name ?? "No Account")
+            : "Statistics",
+        style: const TextStyle(
+            fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
       ),
       centerTitle: true,
       actions: [
@@ -434,47 +458,40 @@ class _MainScreenState extends State<MainScreen> {
             icon: const Icon(Icons.search, size: 28, color: Colors.black),
             onPressed: _startSearch,
           ),
-        if (_selectedIndex == 1) ...[
-          IconButton(
-            icon: const Icon(Icons.share, color: Colors.black),
-            onPressed: _showExportDialog,
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF6F7F9),
-                borderRadius: BorderRadius.circular(12.0),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedPeriod,
-                  elevation: 4,
-                  dropdownColor: Colors.white,
-                  borderRadius: BorderRadius.circular(12.0),
-                  items: periodIcons.entries.map((entry) {
-                    return DropdownMenuItem<String>(
-                      value: entry.key,
-                      child: Row(
-                        children: [
-                          Icon(entry.value, size: 18, color: Colors.grey.shade700),
-                          const SizedBox(width: 8),
-                          Text(entry.key, style: const TextStyle(fontSize: 14)),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (newValue) {
-                    setState(() {
-                      _selectedPeriod = newValue!;
-                    });
-                  },
+
+        if (_selectedIndex == 1)
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.black),
+            onSelected: (value) {
+              if (value == 'sort') {
+                _showSortDialog();
+              } else if (value == 'export') {
+                _showExportDialog();
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'sort',
+                child: Row(
+                  children: [
+                    Icon(Icons.sort, color: Colors.black54),
+                    SizedBox(width: 12),
+                    Text('Sort by Period'),
+                  ],
                 ),
               ),
-            ),
+              const PopupMenuItem<String>(
+                value: 'export',
+                child: Row(
+                  children: [
+                    Icon(Icons.share_outlined, color: Colors.black54),
+                    SizedBox(width: 12),
+                    Text('Export Data'),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
       ],
     );
   }
@@ -508,7 +525,10 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildBottomNavItem({required IconData icon, required bool isSelected, required VoidCallback onTap}) {
+  Widget _buildBottomNavItem(
+      {required IconData icon,
+        required bool isSelected,
+        required VoidCallback onTap}) {
     return SizedBox(
       width: 48,
       height: 48,
@@ -534,7 +554,8 @@ class _MainScreenState extends State<MainScreen> {
             accountEmail: Text("Track your expenses"),
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
-              child: Icon(Icons.monetization_on, color: Colors.orange, size: 40),
+              child:
+              Icon(Icons.monetization_on, color: Colors.orange, size: 40),
             ),
             decoration: BoxDecoration(color: Colors.orange),
           ),
@@ -663,7 +684,9 @@ class _MainScreenState extends State<MainScreen> {
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(ctx).viewInsets.bottom,
-                top: 20, left: 20, right: 20,
+                top: 20,
+                left: 20,
+                right: 20,
               ),
               child: SingleChildScrollView(
                 child: Column(
@@ -672,7 +695,8 @@ class _MainScreenState extends State<MainScreen> {
                   children: <Widget>[
                     Center(
                       child: Container(
-                        width: 40, height: 5,
+                        width: 40,
+                        height: 5,
                         decoration: BoxDecoration(
                           color: Colors.grey.shade300,
                           borderRadius: BorderRadius.circular(10),
@@ -680,14 +704,17 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text('Add New Transaction', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    const Text('Add New Transaction',
+                        style: TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 20),
                     TextField(
                       controller: descriptionController,
                       decoration: InputDecoration(
                         labelText: 'Description',
                         prefixIcon: const Icon(Icons.description_outlined),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                     const SizedBox(height: 15),
@@ -696,7 +723,8 @@ class _MainScreenState extends State<MainScreen> {
                       decoration: InputDecoration(
                         labelText: 'Amount',
                         prefixIcon: const Icon(Icons.attach_money),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       keyboardType: TextInputType.number,
                     ),
@@ -714,8 +742,11 @@ class _MainScreenState extends State<MainScreen> {
                           ],
                           onPressed: (index) {
                             setModalState(() {
-                              transactionType = index == 0 ? TransactionType.income : TransactionType.expense;
-                              final newMap = transactionType == TransactionType.income
+                              transactionType = index == 0
+                                  ? TransactionType.income
+                                  : TransactionType.expense;
+                              final newMap =
+                              transactionType == TransactionType.income
                                   ? incomeCategoryMap
                                   : expenseCategoryMap;
 
@@ -725,24 +756,39 @@ class _MainScreenState extends State<MainScreen> {
                           },
                           borderRadius: BorderRadius.circular(12),
                           selectedColor: Colors.white,
-                          fillColor: transactionType == TransactionType.income ? Colors.green : Colors.red,
+                          fillColor: transactionType == TransactionType.income
+                              ? Colors.green
+                              : Colors.red,
                           borderColor: Colors.grey.shade300,
-                          selectedBorderColor: transactionType == TransactionType.income ? Colors.green : Colors.red,
+                          selectedBorderColor:
+                          transactionType == TransactionType.income
+                              ? Colors.green
+                              : Colors.red,
                           children: const <Widget>[
-                            Padding(padding: EdgeInsets.symmetric(horizontal: 24), child: Text('Income')),
-                            Padding(padding: EdgeInsets.symmetric(horizontal: 24), child: Text('Expense')),
+                            Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 24),
+                                child: Text('Income')),
+                            Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 24),
+                                child: Text('Expense')),
                           ],
                         ),
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text('Select Category', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black54)),
+                    const Text('Select Category',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black54)),
                     const SizedBox(height: 10),
                     SizedBox(
                       height: 60,
                       child: GridView.builder(
                         scrollDirection: Axis.horizontal,
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 1),
+                        gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 1),
                         itemCount: activeIcons.length,
                         itemBuilder: (context, index) {
                           final icon = activeIcons[index];
@@ -756,20 +802,32 @@ class _MainScreenState extends State<MainScreen> {
                             },
                             child: Container(
                               width: 60,
-                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              margin:
+                              const EdgeInsets.symmetric(horizontal: 4),
                               decoration: BoxDecoration(
-                                color: isSelected ? Colors.orange.withOpacity(0.2) : Colors.grey.shade200,
+                                color: isSelected
+                                    ? Colors.orange.withOpacity(0.2)
+                                    : Colors.grey.shade200,
                                 borderRadius: BorderRadius.circular(15),
-                                border: isSelected ? Border.all(color: Colors.orange, width: 2) : null,
+                                border: isSelected
+                                    ? Border.all(color: Colors.orange, width: 2)
+                                    : null,
                               ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(icon, color: isSelected ? Colors.orange : Colors.grey.shade700),
+                                  Icon(icon,
+                                      color: isSelected
+                                          ? Colors.orange
+                                          : Colors.grey.shade700),
                                   const SizedBox(height: 2),
                                   Text(
                                     activeCategoryMap[icon]!,
-                                    style: TextStyle(fontSize: 10, color: isSelected ? Colors.orange : Colors.grey.shade700),
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        color: isSelected
+                                            ? Colors.orange
+                                            : Colors.grey.shade700),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     textAlign: TextAlign.center,
@@ -788,16 +846,22 @@ class _MainScreenState extends State<MainScreen> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text('Save Transaction', style: TextStyle(fontSize: 16, color: Colors.white)),
+                        child: const Text('Save Transaction',
+                            style:
+                            TextStyle(fontSize: 16, color: Colors.white)),
                         onPressed: () {
                           final description = descriptionController.text;
-                          final amount = double.tryParse(amountController.text) ?? 0.0;
-                          if (description.isEmpty || amount <= 0 || selectedCategory == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Please fill all fields and select a category.'))
-                            );
+                          final amount =
+                              double.tryParse(amountController.text) ?? 0.0;
+                          if (description.isEmpty ||
+                              amount <= 0 ||
+                              selectedCategory == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                content: Text(
+                                    'Please fill all fields and select a category.')));
                             return;
                           }
                           final newTransaction = Transaction(
