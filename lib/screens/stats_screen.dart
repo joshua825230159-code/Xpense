@@ -158,56 +158,55 @@ class _StatsScreenState extends State<StatsScreen> {
     final bool noData = widget.selectedType == TransactionType.expense
         ? _expenseByCategory.isEmpty
         : _incomeByCategory.isEmpty;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      color: Colors.grey.shade50,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16.0, 10.0, 16.0, 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (noData)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 80.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.pie_chart_outline,
-                          size: 60, color: Colors.grey),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No ${widget.selectedType.name} data for this period.',
-                        style: TextStyle(
-                            fontSize: 18, color: Colors.grey.shade700),
-                      ),
-                    ],
-                  ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16.0, 10.0, 16.0, 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (noData)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 80.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.pie_chart_outline,
+                        size: 60, color: Colors.grey),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No ${widget.selectedType.name} data for this period.',
+                      style:
+                      TextStyle(fontSize: 18, color: Colors.grey.shade700),
+                    ),
+                  ],
                 ),
-              )
-            else ...[
-              _buildStatisticsCard(),
-              const SizedBox(height: 10),
-              _buildExpensesList(),
-            ],
+              ),
+            )
+          else ...[
+            _buildStatisticsCard(isDarkMode),
+            const SizedBox(height: 10),
+            _buildExpensesList(isDarkMode),
           ],
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildStatisticsCard() {
+  Widget _buildStatisticsCard(bool isDarkMode) {
     return Container(
       padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 2,
-            blurRadius: 10,
-          ),
+          if (!isDarkMode)
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 2,
+              blurRadius: 10,
+            ),
         ],
       ),
       child: Column(
@@ -229,7 +228,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   padding: const EdgeInsets.symmetric(
                       vertical: 8.0, horizontal: 12.0),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: isDarkMode ? Colors.black.withOpacity(0.2) : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Scrollbar(
@@ -315,7 +314,7 @@ class _StatsScreenState extends State<StatsScreen> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade800,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
                       ),
                     ),
                   ],
@@ -342,7 +341,7 @@ class _StatsScreenState extends State<StatsScreen> {
     }).toList();
   }
 
-  Widget _buildExpensesList() {
+  Widget _buildExpensesList(bool isDarkMode) {
     final currencyFormatter =
     NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0);
     final title = widget.selectedType == TransactionType.expense
@@ -352,14 +351,15 @@ class _StatsScreenState extends State<StatsScreen> {
     return Container(
       padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 2,
-            blurRadius: 10,
-          )
+          if (!isDarkMode)
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 2,
+              blurRadius: 10,
+            )
         ],
       ),
       child: Column(
@@ -379,8 +379,8 @@ class _StatsScreenState extends State<StatsScreen> {
                 NumberFormat.currency(
                     locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0)
                     .format(_totalForActiveType),
-                style:
-                const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ],
           ),
@@ -436,7 +436,7 @@ class _StatsScreenState extends State<StatsScreen> {
                                 borderRadius: BorderRadius.circular(10),
                                 child: LinearProgressIndicator(
                                   value: percentage,
-                                  backgroundColor: Colors.grey.shade200,
+                                  backgroundColor: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
                                   color: color,
                                   minHeight: 8,
                                 ),

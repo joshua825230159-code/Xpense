@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/account_model.dart';
 import '../models/transaction_model.dart';
+import '../providers/theme_provider.dart';
+import '../widgets/add_transaction_sheet.dart';
 import 'add_account_screen.dart';
 import 'expense_list_screen.dart';
 import 'manage_accounts_screen.dart';
@@ -45,12 +48,6 @@ class _MainScreenState extends State<MainScreen> {
     _searchController.addListener(() {
       if (_searchController.text.isEmpty && _searchQuery.isNotEmpty) {
         _updateSearchQuery('');
-      }
-    });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_accounts.isEmpty) {
-        _navigateToAddAccount();
       }
     });
   }
@@ -298,7 +295,8 @@ class _MainScreenState extends State<MainScreen> {
     final updatedTransaction = await Navigator.push<Transaction>(
       context,
       MaterialPageRoute(
-        builder: (context) => TransactionDetailScreen(transaction: transaction),
+        builder: (context) =>
+            TransactionDetailScreen(transaction: transaction),
       ),
     );
 
@@ -353,6 +351,23 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  void _showAddTransactionSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return AddTransactionSheet(
+          onAddTransaction: (transaction) {
+            _addTransaction(transaction);
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<Transaction> allTransactions =
@@ -402,14 +417,14 @@ class _MainScreenState extends State<MainScreen> {
           : FloatingActionButton(
         onPressed: () => _showAddTransactionSheet(context),
         backgroundColor: Colors.orange,
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
+        child:
+        const Icon(Icons.add, color: Colors.white, size: 30),
         shape: const CircleBorder(),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: _accounts.isEmpty
           ? null
           : BottomAppBar(
-        color: Colors.white,
         height: 60.0,
         shape: const CircularNotchedRectangle(),
         notchMargin: 8.0,
@@ -458,31 +473,28 @@ class _MainScreenState extends State<MainScreen> {
         ? Icons.show_chart
         : Icons.score;
 
+    final iconColor = Theme.of(context).appBarTheme.iconTheme?.color;
+
     return AppBar(
-      backgroundColor: const Color(0xFFF6F7F9),
-      elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.menu, size: 30, color: Colors.black),
+        icon: Icon(Icons.menu, size: 30, color: iconColor),
         onPressed: () => _scaffoldKey.currentState?.openDrawer(),
       ),
       title: Text(
         _selectedIndex == 0
             ? (_activeAccount?.name ?? "No Account")
             : "Statistics",
-        style: const TextStyle(
-            fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
       ),
       centerTitle: true,
       actions: [
         if (_selectedIndex == 0)
           IconButton(
-            icon: const Icon(Icons.search, size: 28, color: Colors.black),
+            icon: Icon(Icons.search, size: 28, color: iconColor),
             onPressed: _startSearch,
           ),
-
         if (_selectedIndex == 1)
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.black),
+            icon: Icon(Icons.more_vert, color: iconColor),
             onSelected: (value) {
               if (value == 'toggle_type') {
                 _toggleTransactionType();
@@ -497,7 +509,7 @@ class _MainScreenState extends State<MainScreen> {
                 value: 'toggle_type',
                 child: Row(
                   children: [
-                    Icon(toggleTypeIcon, color: Colors.black54),
+                    Icon(toggleTypeIcon),
                     const SizedBox(width: 12),
                     Text(toggleTypeTitle),
                   ],
@@ -508,7 +520,7 @@ class _MainScreenState extends State<MainScreen> {
                 value: 'sort',
                 child: Row(
                   children: [
-                    Icon(Icons.sort, color: Colors.black54),
+                    Icon(Icons.sort),
                     SizedBox(width: 12),
                     Text('Sort by Period'),
                   ],
@@ -518,7 +530,7 @@ class _MainScreenState extends State<MainScreen> {
                 value: 'export',
                 child: Row(
                   children: [
-                    Icon(Icons.share_outlined, color: Colors.black54),
+                    Icon(Icons.share_outlined),
                     SizedBox(width: 12),
                     Text('Export Data'),
                   ],
@@ -532,10 +544,10 @@ class _MainScreenState extends State<MainScreen> {
 
   AppBar _buildSearchAppBar() {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       elevation: 1,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.black),
+        icon: const Icon(Icons.arrow_back),
         onPressed: _stopSearch,
       ),
       title: TextField(
@@ -550,7 +562,7 @@ class _MainScreenState extends State<MainScreen> {
       actions: [
         if (_searchQuery.isNotEmpty)
           IconButton(
-            icon: const Icon(Icons.close, color: Colors.black),
+            icon: const Icon(Icons.close),
             onPressed: () {
               _searchController.clear();
             },
@@ -579,6 +591,9 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Drawer _buildDrawer() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
+
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -612,6 +627,18 @@ class _MainScreenState extends State<MainScreen> {
             selectedTileColor: Colors.orange.withOpacity(0.1),
             onTap: () => _changeActiveAccount(account),
           )),
+          const Divider(),
+          _buildDrawerSectionTitle("Settings"),
+          SwitchListTile(
+            title: const Text('Dark Mode'),
+            value: isDarkMode,
+            onChanged: (value) {
+              themeProvider.toggleTheme(value);
+            },
+            secondary: Icon(
+              isDarkMode ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+            ),
+          ),
         ],
       ),
     );
@@ -672,8 +699,5 @@ class _MainScreenState extends State<MainScreen> {
         ),
       ),
     );
-  }
-
-  void _showAddTransactionSheet(BuildContext context) {
   }
 }

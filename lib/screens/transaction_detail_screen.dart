@@ -95,10 +95,11 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         ? incomeCategoryMap
         : expenseCategoryMap;
     final activeIcons = activeCategoryMap.keys.toList();
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Transaksi'),
+        title: const Text('Edit Transaction'),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -110,7 +111,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             TextField(
               controller: _descriptionController,
               decoration: InputDecoration(
-                labelText: 'Deskripsi',
+                labelText: 'Description',
                 prefixIcon: const Icon(Icons.description_outlined),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -119,8 +120,18 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             TextField(
               controller: _amountController,
               decoration: InputDecoration(
-                labelText: 'Jumlah',
-                prefixIcon: const Icon(Icons.attach_money),
+                labelText: 'Amount',
+                prefixIcon: Align(
+                  widthFactor: 1.0,
+                  heightFactor: 1.0,
+                  child: Text(
+                    'Rp',
+                    style: TextStyle(
+                      color: Theme.of(context).hintColor,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
               keyboardType: TextInputType.number,
@@ -129,7 +140,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             Center(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
+                  color: isDarkMode ? const Color(0xFF414141) : const Color(0xFFECECEC),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: ToggleButtons(
@@ -150,21 +161,22 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                     });
                   },
                   borderRadius: BorderRadius.circular(12),
+                  color: isDarkMode ? Colors.white70 : Colors.black87,
                   selectedColor: Colors.white,
                   fillColor: _transactionType == TransactionType.income
                       ? Colors.green
                       : Colors.red,
-                  borderColor: Colors.grey.shade300,
+                  borderColor: Colors.transparent,
                   selectedBorderColor: _transactionType == TransactionType.income
                       ? Colors.green
                       : Colors.red,
                   children: const <Widget>[
                     Padding(
                         padding: EdgeInsets.symmetric(horizontal: 24),
-                        child: Text('Pemasukan')),
+                        child: Text('Income')),
                     Padding(
                         padding: EdgeInsets.symmetric(horizontal: 24),
-                        child: Text('Pengeluaran')),
+                        child: Text('Expense')),
                   ],
                 ),
               ),
@@ -173,21 +185,21 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             ListTile(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.grey.shade400),
+                side: BorderSide(color: Theme.of(context).dividerColor),
               ),
               leading: const Icon(Icons.calendar_today),
               title: Text(DateFormat('d MMMM yyyy').format(_selectedDate)),
               onTap: () => _selectDate(context),
             ),
             const SizedBox(height: 20),
-            const Text('Pilih Kategori',
+            Text('Select Category',
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black54)),
+                    color: Theme.of(context).textTheme.bodyMedium?.color)),
             const SizedBox(height: 10),
             SizedBox(
-              height: 160,
+              height: 300,
               child: GridView.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 4,
@@ -209,7 +221,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? Colors.orange.withOpacity(0.2)
-                            : Colors.grey.shade200,
+                            : (isDarkMode ? const Color(0xFF414141) : const Color(0xFFECECEC)),
                         borderRadius: BorderRadius.circular(15),
                         border: isSelected
                             ? Border.all(color: Colors.orange, width: 2)
@@ -221,7 +233,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                           Icon(icon,
                               color: isSelected
                                   ? Colors.orange
-                                  : Colors.grey.shade700),
+                                  : (isDarkMode ? Colors.white70 : Colors.grey.shade700)),
                           const SizedBox(height: 4),
                           Text(
                             activeCategoryMap[icon]!,
@@ -229,7 +241,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                                 fontSize: 10,
                                 color: isSelected
                                     ? Colors.orange
-                                    : Colors.grey.shade700),
+                                    : (isDarkMode ? Colors.white70 : Colors.grey.shade700)),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.center,
@@ -241,22 +253,24 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                 },
               ),
             ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('Simpan Perubahan',
-                    style: TextStyle(fontSize: 16, color: Colors.white)),
-                onPressed: _saveChanges,
-              ),
-            ),
           ],
+        ),
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Simpan Perubahan',
+                style: TextStyle(fontSize: 16, color: Colors.white)),
+            onPressed: _saveChanges,
+          ),
         ),
       ),
     );
