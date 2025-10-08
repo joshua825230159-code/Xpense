@@ -9,12 +9,14 @@ class StatsScreen extends StatefulWidget {
   final Account account;
   final List<Transaction> transactions;
   final String selectedPeriod;
+  final TransactionType selectedType;
 
   const StatsScreen({
     super.key,
     required this.account,
     required this.transactions,
     required this.selectedPeriod,
+    required this.selectedType,
   });
 
   @override
@@ -26,8 +28,6 @@ class _StatsScreenState extends State<StatsScreen> {
   late Map<String, double> _incomeByCategory;
   late double _totalExpense;
   late double _totalIncome;
-
-  TransactionType _selectedType = TransactionType.expense;
 
   int _touchedIndex = -1;
 
@@ -73,7 +73,8 @@ class _StatsScreenState extends State<StatsScreen> {
     super.didUpdateWidget(oldWidget);
     if (widget.transactions != oldWidget.transactions ||
         widget.account != oldWidget.account ||
-        widget.selectedPeriod != oldWidget.selectedPeriod) {
+        widget.selectedPeriod != oldWidget.selectedPeriod ||
+        widget.selectedType != oldWidget.selectedType) {
       _processTransactionData();
     }
   }
@@ -93,7 +94,7 @@ class _StatsScreenState extends State<StatsScreen> {
       case 'Weekly':
         final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
         final firstDayOfWeek =
-            DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+        DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
         periodTransactions = widget.transactions.where((t) {
           return t.date
               .isAfter(firstDayOfWeek.subtract(const Duration(seconds: 1)));
@@ -130,101 +131,67 @@ class _StatsScreenState extends State<StatsScreen> {
       }
     }
 
-    setState(() {
-      _expenseByCategory = Map.fromEntries(
-        expenseData.entries.toList()
-          ..sort((e1, e2) => e2.value.compareTo(e1.value)),
-      );
-      _incomeByCategory = Map.fromEntries(
-        incomeData.entries.toList()
-          ..sort((e1, e2) => e2.value.compareTo(e1.value)),
-      );
-    });
+    _expenseByCategory = Map.fromEntries(
+      expenseData.entries.toList()
+        ..sort((e1, e2) => e2.value.compareTo(e1.value)),
+    );
+    _incomeByCategory = Map.fromEntries(
+      incomeData.entries.toList()
+        ..sort((e1, e2) => e2.value.compareTo(e1.value)),
+    );
   }
 
   Map<String, double> get _activeCategoryData {
-    return _selectedType == TransactionType.expense
+    return widget.selectedType == TransactionType.expense
         ? _expenseByCategory
         : _incomeByCategory;
   }
 
   double get _totalForActiveType {
-    return _selectedType == TransactionType.expense
+    return widget.selectedType == TransactionType.expense
         ? _totalExpense
         : _totalIncome;
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool noData = _selectedType == TransactionType.expense
+    final bool noData = widget.selectedType == TransactionType.expense
         ? _expenseByCategory.isEmpty
         : _incomeByCategory.isEmpty;
 
     return Container(
       color: Colors.grey.shade50,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+        padding: const EdgeInsets.fromLTRB(16.0, 10.0, 16.0, 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 15),
-            _buildToggleButtons(),
-            const SizedBox(height: 15),
             if (noData)
               Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.pie_chart_outline,
-                        size: 60, color: Colors.grey),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No ${_selectedType.name} data for this period.',
-                      style:
-                          TextStyle(fontSize: 18, color: Colors.grey.shade700),
-                    ),
-                  ],
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 80.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.pie_chart_outline,
+                          size: 60, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No ${widget.selectedType.name} data for this period.',
+                        style: TextStyle(
+                            fontSize: 18, color: Colors.grey.shade700),
+                      ),
+                    ],
+                  ),
                 ),
               )
             else ...[
               _buildStatisticsCard(),
-              const SizedBox(height: 15),
+              const SizedBox(height: 10),
               _buildExpensesList(),
             ],
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildToggleButtons() {
-    return Center(
-      child: ToggleButtons(
-        isSelected: [
-          _selectedType == TransactionType.expense,
-          _selectedType == TransactionType.income,
-        ],
-        onPressed: (index) {
-          setState(() {
-            _selectedType =
-                index == 0 ? TransactionType.expense : TransactionType.income;
-            _touchedIndex = -1;
-          });
-        },
-        borderRadius: BorderRadius.circular(12),
-        selectedColor: Colors.white,
-        fillColor:
-            _selectedType == TransactionType.expense ? Colors.red : Colors.green,
-        children: const [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text('Expense'),
-          ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text('Income'),
-          ),
-        ],
       ),
     );
   }
@@ -246,17 +213,19 @@ class _StatsScreenState extends State<StatsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Statistics',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            widget.selectedType == TransactionType.expense
+                ? 'Expense Statistics'
+                : 'Income Statistics',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 5),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: Container(
-                  height: 160,
+                  height: 150,
                   padding: const EdgeInsets.symmetric(
                       vertical: 8.0, horizontal: 12.0),
                   decoration: BoxDecoration(
@@ -270,12 +239,12 @@ class _StatsScreenState extends State<StatsScreen> {
                       itemCount: _activeCategoryData.length,
                       itemBuilder: (context, index) {
                         final entry =
-                            _activeCategoryData.entries.elementAt(index);
+                        _activeCategoryData.entries.elementAt(index);
                         final percentage = (_totalForActiveType > 0)
                             ? (entry.value / _totalForActiveType)
                             : 0.0;
                         final color =
-                            _categoryColors[index % _categoryColors.length];
+                        _categoryColors[index % _categoryColors.length];
 
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -375,10 +344,10 @@ class _StatsScreenState extends State<StatsScreen> {
 
   Widget _buildExpensesList() {
     final currencyFormatter =
-        NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0);
-    final title = _selectedType == TransactionType.expense
-        ? 'Expenses List'
-        : 'Income List';
+    NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0);
+    final title = widget.selectedType == TransactionType.expense
+        ? 'Expenses by Category'
+        : 'Income by Category';
 
     return Container(
       padding: const EdgeInsets.all(24.0),
@@ -408,10 +377,10 @@ class _StatsScreenState extends State<StatsScreen> {
                   style: TextStyle(color: Colors.grey.shade600)),
               Text(
                 NumberFormat.currency(
-                        locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0)
+                    locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0)
                     .format(_totalForActiveType),
                 style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ],
           ),
