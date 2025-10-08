@@ -7,6 +7,7 @@ import 'expense_list_screen.dart';
 import 'manage_accounts_screen.dart';
 import 'stats_screen.dart';
 import 'transaction_detail_screen.dart';
+import '../services/export_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -35,6 +36,8 @@ class _MainScreenState extends State<MainScreen> {
   bool _isSelectionMode = false;
   final Set<Transaction> _selectedTransactions = {};
 
+  final ExportService _exportService = ExportService();
+
   @override
   void initState() {
     super.initState();
@@ -55,6 +58,67 @@ class _MainScreenState extends State<MainScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _showExportDialog() {
+    final List<Transaction> allTransactions = _activeAccount != null
+        ? _accountTransactions[_activeAccount!] ?? []
+        : [];
+
+    final now = DateTime.now();
+    List<Transaction> periodTransactions;
+
+    switch (_selectedPeriod) {
+      case 'Daily':
+        periodTransactions = allTransactions.where((t) {
+          return t.date.year == now.year &&
+              t.date.month == now.month &&
+              t.date.day == now.day;
+        }).toList();
+        break;
+      case 'Weekly':
+        final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+        final firstDayOfWeek = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+        periodTransactions = allTransactions.where((t) {
+          return t.date.isAfter(firstDayOfWeek.subtract(const Duration(seconds: 1)));
+        }).toList();
+        break;
+      case 'Yearly':
+        periodTransactions = allTransactions.where((t) {
+          return t.date.year == now.year;
+        }).toList();
+        break;
+      case 'Monthly':
+      default:
+        periodTransactions = allTransactions.where((t) {
+          return t.date.year == now.year && t.date.month == now.month;
+        }).toList();
+        break;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Export Expenses'),
+        content: const Text('Choose the format to export your expenses for the selected period.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _exportService.exportToCsv(periodTransactions, _selectedPeriod);
+            },
+            child: const Text('CSV'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _exportService.exportToPdf(periodTransactions, _selectedPeriod);
+            },
+            child: const Text('PDF'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _navigateToAddAccount() async {
@@ -370,8 +434,11 @@ class _MainScreenState extends State<MainScreen> {
             icon: const Icon(Icons.search, size: 28, color: Colors.black),
             onPressed: _startSearch,
           ),
-
-        if (_selectedIndex == 1)
+        if (_selectedIndex == 1) ...[
+          IconButton(
+            icon: const Icon(Icons.share, color: Colors.black),
+            onPressed: _showExportDialog,
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: Container(
@@ -407,6 +474,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
           ),
+        ],
       ],
     );
   }
