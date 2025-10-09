@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/account_model.dart';
 import '../models/transaction_model.dart';
+import '../providers/theme_provider.dart';
+import '../widgets/add_transaction_sheet.dart';
 import 'add_account_screen.dart';
 import 'expense_list_screen.dart';
 import 'manage_accounts_screen.dart';
@@ -28,6 +31,7 @@ class _MainScreenState extends State<MainScreen> {
 
   int _selectedIndex = 0;
   String _selectedPeriod = 'Monthly';
+  TransactionType _selectedTransactionType = TransactionType.expense;
 
   bool _isSearching = false;
   String _searchQuery = '';
@@ -46,12 +50,6 @@ class _MainScreenState extends State<MainScreen> {
         _updateSearchQuery('');
       }
     });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_accounts.isEmpty) {
-        _navigateToAddAccount();
-      }
-    });
   }
 
   @override
@@ -60,10 +58,41 @@ class _MainScreenState extends State<MainScreen> {
     super.dispose();
   }
 
+  void _toggleTransactionType() {
+    setState(() {
+      _selectedTransactionType =
+      _selectedTransactionType == TransactionType.expense
+          ? TransactionType.income
+          : TransactionType.expense;
+    });
+  }
+
+  void _showSortDialog() {
+    final periods = ['Daily', 'Weekly', 'Monthly', 'Yearly'];
+    showDialog(
+      context: context,
+      builder: (context) {
+        return SimpleDialog(
+          title: const Text('Select Period'),
+          children: periods.map((period) {
+            return SimpleDialogOption(
+              onPressed: () {
+                setState(() {
+                  _selectedPeriod = period;
+                });
+                Navigator.pop(context);
+              },
+              child: Text(period),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
   void _showExportDialog() {
-    final List<Transaction> allTransactions = _activeAccount != null
-        ? _accountTransactions[_activeAccount!] ?? []
-        : [];
+    final List<Transaction> allTransactions =
+    _activeAccount != null ? _accountTransactions[_activeAccount!] ?? [] : [];
 
     final now = DateTime.now();
     List<Transaction> periodTransactions;
@@ -78,9 +107,11 @@ class _MainScreenState extends State<MainScreen> {
         break;
       case 'Weekly':
         final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-        final firstDayOfWeek = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+        final firstDayOfWeek =
+        DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
         periodTransactions = allTransactions.where((t) {
-          return t.date.isAfter(firstDayOfWeek.subtract(const Duration(seconds: 1)));
+          return t.date
+              .isAfter(firstDayOfWeek.subtract(const Duration(seconds: 1)));
         }).toList();
         break;
       case 'Yearly':
@@ -100,7 +131,8 @@ class _MainScreenState extends State<MainScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Export Expenses'),
-        content: const Text('Choose the format to export your expenses for the selected period.'),
+        content: const Text(
+            'Choose the format to export your expenses for the selected period.'),
         actions: [
           TextButton(
             onPressed: () {
@@ -135,7 +167,6 @@ class _MainScreenState extends State<MainScreen> {
       });
     }
   }
-
 
   void _navigateToManageAccounts() async {
     if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
@@ -217,7 +248,8 @@ class _MainScreenState extends State<MainScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Konfirmasi Hapus'),
-        content: Text('Anda yakin ingin menghapus ${_selectedTransactions.length} transaksi? Aksi ini tidak dapat dibatalkan.'),
+        content: Text(
+            'Anda yakin ingin menghapus ${_selectedTransactions.length} transaksi? Aksi ini tidak dapat dibatalkan.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -255,14 +287,16 @@ class _MainScreenState extends State<MainScreen> {
     if (_isSelectionMode) return;
 
     final Transaction originalTransaction = transaction;
-    final List<Transaction>? transactionList = _accountTransactions[_activeAccount!];
+    final List<Transaction>? transactionList =
+    _accountTransactions[_activeAccount!];
 
     if (transactionList == null) return;
 
     final updatedTransaction = await Navigator.push<Transaction>(
       context,
       MaterialPageRoute(
-        builder: (context) => TransactionDetailScreen(transaction: transaction),
+        builder: (context) =>
+            TransactionDetailScreen(transaction: transaction),
       ),
     );
 
@@ -317,14 +351,32 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  void _showAddTransactionSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return AddTransactionSheet(
+          onAddTransaction: (transaction) {
+            _addTransaction(transaction);
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final List<Transaction> allTransactions = _activeAccount != null
-        ? _accountTransactions[_activeAccount!] ?? []
-        : [];
+    final List<Transaction> allTransactions =
+    _activeAccount != null ? _accountTransactions[_activeAccount!] ?? [] : [];
 
     final filteredTransactions = allTransactions.where((transaction) {
-      return transaction.description.toLowerCase().contains(_searchQuery.toLowerCase());
+      return transaction.description
+          .toLowerCase()
+          .contains(_searchQuery.toLowerCase());
     }).toList();
 
     final List<Widget> pages = [
@@ -343,6 +395,7 @@ class _MainScreenState extends State<MainScreen> {
           account: _activeAccount!,
           transactions: List.from(allTransactions),
           selectedPeriod: _selectedPeriod,
+          selectedType: _selectedTransactionType,
         ),
     ];
 
@@ -358,19 +411,20 @@ class _MainScreenState extends State<MainScreen> {
         index: _selectedIndex,
         children: pages,
       ),
-      floatingActionButton: (_accounts.isEmpty || _isSearching || _isSelectionMode)
+      floatingActionButton:
+      (_accounts.isEmpty || _isSearching || _isSelectionMode)
           ? null
           : FloatingActionButton(
         onPressed: () => _showAddTransactionSheet(context),
         backgroundColor: Colors.orange,
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
+        child:
+        const Icon(Icons.add, color: Colors.white, size: 30),
         shape: const CircleBorder(),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: _accounts.isEmpty
           ? null
           : BottomAppBar(
-        color: Colors.white,
         height: 60.0,
         shape: const CircularNotchedRectangle(),
         notchMargin: 8.0,
@@ -409,82 +463,91 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   AppBar _buildDefaultAppBar() {
-    final Map<String, IconData> periodIcons = {
-      'Daily': Icons.today,
-      'Weekly': Icons.view_week_outlined,
-      'Monthly': Icons.calendar_month_outlined,
-      'Yearly': Icons.calendar_today_outlined,
-    };
+    final String toggleTypeTitle =
+    _selectedTransactionType == TransactionType.expense
+        ? 'View Income'
+        : 'View Expense';
+
+    final IconData toggleTypeIcon =
+    _selectedTransactionType == TransactionType.expense
+        ? Icons.show_chart
+        : Icons.score;
+
+    final iconColor = Theme.of(context).appBarTheme.iconTheme?.color;
 
     return AppBar(
-      backgroundColor: const Color(0xFFF6F7F9),
-      elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.menu, size: 30, color: Colors.black),
+        icon: Icon(Icons.menu, size: 30, color: iconColor),
         onPressed: () => _scaffoldKey.currentState?.openDrawer(),
       ),
       title: Text(
-        _selectedIndex == 0 ? (_activeAccount?.name ?? "No Account") : "Statistics",
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+        _selectedIndex == 0
+            ? (_activeAccount?.name ?? "No Account")
+            : "Statistics",
       ),
       centerTitle: true,
       actions: [
         if (_selectedIndex == 0)
           IconButton(
-            icon: const Icon(Icons.search, size: 28, color: Colors.black),
+            icon: Icon(Icons.search, size: 28, color: iconColor),
             onPressed: _startSearch,
           ),
-        if (_selectedIndex == 1) ...[
-          IconButton(
-            icon: const Icon(Icons.share, color: Colors.black),
-            onPressed: _showExportDialog,
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF6F7F9),
-                borderRadius: BorderRadius.circular(12.0),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedPeriod,
-                  elevation: 4,
-                  dropdownColor: Colors.white,
-                  borderRadius: BorderRadius.circular(12.0),
-                  items: periodIcons.entries.map((entry) {
-                    return DropdownMenuItem<String>(
-                      value: entry.key,
-                      child: Row(
-                        children: [
-                          Icon(entry.value, size: 18, color: Colors.grey.shade700),
-                          const SizedBox(width: 8),
-                          Text(entry.key, style: const TextStyle(fontSize: 14)),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (newValue) {
-                    setState(() {
-                      _selectedPeriod = newValue!;
-                    });
-                  },
+        if (_selectedIndex == 1)
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: iconColor),
+            onSelected: (value) {
+              if (value == 'toggle_type') {
+                _toggleTransactionType();
+              } else if (value == 'sort') {
+                _showSortDialog();
+              } else if (value == 'export') {
+                _showExportDialog();
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              PopupMenuItem<String>(
+                value: 'toggle_type',
+                child: Row(
+                  children: [
+                    Icon(toggleTypeIcon),
+                    const SizedBox(width: 12),
+                    Text(toggleTypeTitle),
+                  ],
                 ),
               ),
-            ),
+              const PopupMenuDivider(),
+              const PopupMenuItem<String>(
+                value: 'sort',
+                child: Row(
+                  children: [
+                    Icon(Icons.sort),
+                    SizedBox(width: 12),
+                    Text('Sort by Period'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'export',
+                child: Row(
+                  children: [
+                    Icon(Icons.share_outlined),
+                    SizedBox(width: 12),
+                    Text('Export Data'),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
       ],
     );
   }
 
   AppBar _buildSearchAppBar() {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       elevation: 1,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.black),
+        icon: const Icon(Icons.arrow_back),
         onPressed: _stopSearch,
       ),
       title: TextField(
@@ -499,7 +562,7 @@ class _MainScreenState extends State<MainScreen> {
       actions: [
         if (_searchQuery.isNotEmpty)
           IconButton(
-            icon: const Icon(Icons.close, color: Colors.black),
+            icon: const Icon(Icons.close),
             onPressed: () {
               _searchController.clear();
             },
@@ -508,7 +571,10 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildBottomNavItem({required IconData icon, required bool isSelected, required VoidCallback onTap}) {
+  Widget _buildBottomNavItem(
+      {required IconData icon,
+        required bool isSelected,
+        required VoidCallback onTap}) {
     return SizedBox(
       width: 48,
       height: 48,
@@ -525,6 +591,9 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Drawer _buildDrawer() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
+
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -534,7 +603,8 @@ class _MainScreenState extends State<MainScreen> {
             accountEmail: Text("Track your expenses"),
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
-              child: Icon(Icons.monetization_on, color: Colors.orange, size: 40),
+              child:
+              Icon(Icons.monetization_on, color: Colors.orange, size: 40),
             ),
             decoration: BoxDecoration(color: Colors.orange),
           ),
@@ -557,6 +627,18 @@ class _MainScreenState extends State<MainScreen> {
             selectedTileColor: Colors.orange.withOpacity(0.1),
             onTap: () => _changeActiveAccount(account),
           )),
+          const Divider(),
+          _buildDrawerSectionTitle("Settings"),
+          SwitchListTile(
+            title: const Text('Dark Mode'),
+            value: isDarkMode,
+            onChanged: (value) {
+              themeProvider.toggleTheme(value);
+            },
+            secondary: Icon(
+              isDarkMode ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+            ),
+          ),
         ],
       ),
     );
@@ -616,211 +698,6 @@ class _MainScreenState extends State<MainScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  void _showAddTransactionSheet(BuildContext context) {
-    final descriptionController = TextEditingController();
-    final amountController = TextEditingController();
-    var transactionType = TransactionType.expense;
-    final expenseCategoryMap = {
-      Icons.shopping_cart: 'Groceries',
-      Icons.fastfood: 'Food',
-      Icons.airplanemode_active: 'Travel',
-      Icons.receipt: 'Bills',
-      Icons.movie: 'Entertainment',
-      Icons.health_and_safety: 'Health',
-      Icons.school: 'Education',
-      Icons.pets: 'Pets',
-      Icons.home: 'Home',
-      Icons.train: 'Transport',
-      Icons.phone_android: 'Gadgets',
-      Icons.local_gas_station: 'Fuel',
-    };
-    final incomeCategoryMap = {
-      Icons.work_outline: 'Salary',
-      Icons.computer: 'Freelance',
-      Icons.card_giftcard: 'Bonus',
-      Icons.trending_up: 'Investment',
-      Icons.redeem: 'Gift',
-      Icons.attach_money: 'Other',
-    };
-    var selectedIcon = expenseCategoryMap.keys.first;
-    String? selectedCategory = expenseCategoryMap[selectedIcon];
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25.0)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            final activeCategoryMap = transactionType == TransactionType.income
-                ? incomeCategoryMap
-                : expenseCategoryMap;
-            final activeIcons = activeCategoryMap.keys.toList();
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom,
-                top: 20, left: 20, right: 20,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Center(
-                      child: Container(
-                        width: 40, height: 5,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Text('Add New Transaction', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: descriptionController,
-                      decoration: InputDecoration(
-                        labelText: 'Description',
-                        prefixIcon: const Icon(Icons.description_outlined),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                    TextField(
-                      controller: amountController,
-                      decoration: InputDecoration(
-                        labelText: 'Amount',
-                        prefixIcon: const Icon(Icons.attach_money),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ToggleButtons(
-                          isSelected: [
-                            transactionType == TransactionType.income,
-                            transactionType == TransactionType.expense,
-                          ],
-                          onPressed: (index) {
-                            setModalState(() {
-                              transactionType = index == 0 ? TransactionType.income : TransactionType.expense;
-                              final newMap = transactionType == TransactionType.income
-                                  ? incomeCategoryMap
-                                  : expenseCategoryMap;
-
-                              selectedIcon = newMap.keys.first;
-                              selectedCategory = newMap[selectedIcon];
-                            });
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          selectedColor: Colors.white,
-                          fillColor: transactionType == TransactionType.income ? Colors.green : Colors.red,
-                          borderColor: Colors.grey.shade300,
-                          selectedBorderColor: transactionType == TransactionType.income ? Colors.green : Colors.red,
-                          children: const <Widget>[
-                            Padding(padding: EdgeInsets.symmetric(horizontal: 24), child: Text('Income')),
-                            Padding(padding: EdgeInsets.symmetric(horizontal: 24), child: Text('Expense')),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Text('Select Category', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black54)),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      height: 60,
-                      child: GridView.builder(
-                        scrollDirection: Axis.horizontal,
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 1),
-                        itemCount: activeIcons.length,
-                        itemBuilder: (context, index) {
-                          final icon = activeIcons[index];
-                          final isSelected = icon == selectedIcon;
-                          return GestureDetector(
-                            onTap: () {
-                              setModalState(() {
-                                selectedIcon = icon;
-                                selectedCategory = activeCategoryMap[icon];
-                              });
-                            },
-                            child: Container(
-                              width: 60,
-                              margin: const EdgeInsets.symmetric(horizontal: 4),
-                              decoration: BoxDecoration(
-                                color: isSelected ? Colors.orange.withOpacity(0.2) : Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(15),
-                                border: isSelected ? Border.all(color: Colors.orange, width: 2) : null,
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(icon, color: isSelected ? Colors.orange : Colors.grey.shade700),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    activeCategoryMap[icon]!,
-                                    style: TextStyle(fontSize: 10, color: isSelected ? Colors.orange : Colors.grey.shade700),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('Save Transaction', style: TextStyle(fontSize: 16, color: Colors.white)),
-                        onPressed: () {
-                          final description = descriptionController.text;
-                          final amount = double.tryParse(amountController.text) ?? 0.0;
-                          if (description.isEmpty || amount <= 0 || selectedCategory == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Please fill all fields and select a category.'))
-                            );
-                            return;
-                          }
-                          final newTransaction = Transaction(
-                            description: description,
-                            amount: amount,
-                            type: transactionType,
-                            date: DateTime.now(),
-                            iconValue: selectedIcon.codePoint,
-                            category: selectedCategory,
-                          );
-                          _addTransaction(newTransaction);
-                          Navigator.of(ctx).pop();
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
     );
   }
 }
