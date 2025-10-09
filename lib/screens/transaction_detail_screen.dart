@@ -198,60 +198,59 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                     fontWeight: FontWeight.w600,
                     color: Theme.of(context).textTheme.bodyMedium?.color)),
             const SizedBox(height: 10),
-            SizedBox(
-              height: 300,
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                ),
-                itemCount: activeIcons.length,
-                itemBuilder: (context, index) {
-                  final icon = activeIcons[index];
-                  final isSelected = icon == _selectedIcon;
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedIcon = icon;
-                        _selectedCategory = activeCategoryMap[icon];
-                      });
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Colors.orange.withOpacity(0.2)
-                            : (isDarkMode ? const Color(0xFF414141) : const Color(0xFFECECEC)),
-                        borderRadius: BorderRadius.circular(15),
-                        border: isSelected
-                            ? Border.all(color: Colors.orange, width: 2)
-                            : null,
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(icon,
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: activeIcons.length,
+              itemBuilder: (context, index) {
+                final icon = activeIcons[index];
+                final isSelected = icon == _selectedIcon;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedIcon = icon;
+                      _selectedCategory = activeCategoryMap[icon];
+                    });
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.orange.withOpacity(0.2)
+                          : (isDarkMode ? const Color(0xFF414141) : const Color(0xFFECECEC)),
+                      borderRadius: BorderRadius.circular(15),
+                      border: isSelected
+                          ? Border.all(color: Colors.orange, width: 2)
+                          : null,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(icon,
+                            color: isSelected
+                                ? Colors.orange
+                                : (isDarkMode ? Colors.white70 : Colors.grey.shade700)),
+                        const SizedBox(height: 4),
+                        Text(
+                          activeCategoryMap[icon]!,
+                          style: TextStyle(
+                              fontSize: 10,
                               color: isSelected
                                   ? Colors.orange
                                   : (isDarkMode ? Colors.white70 : Colors.grey.shade700)),
-                          const SizedBox(height: 4),
-                          Text(
-                            activeCategoryMap[icon]!,
-                            style: TextStyle(
-                                fontSize: 10,
-                                color: isSelected
-                                    ? Colors.orange
-                                    : (isDarkMode ? Colors.white70 : Colors.grey.shade700)),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
           ],
         ),
