@@ -116,7 +116,18 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                 controller: _amountController,
                 decoration: InputDecoration(
                   labelText: 'Amount',
-                  prefixIcon: const Icon(Icons.attach_money),
+                  prefixIcon: Align(
+                    widthFactor: 1.0,
+                    heightFactor: 1.0,
+                    child: Text(
+                      'Rp',
+                      style: TextStyle(
+                        color: Theme.of(context).hintColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 keyboardType: TextInputType.number,
@@ -126,7 +137,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                   return null;
                 },
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 15),
               Center(
                 child: Container(
                   decoration: BoxDecoration(
@@ -158,7 +169,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 15),
               ListTile(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -168,7 +179,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                 title: Text(DateFormat('d MMMM yyyy').format(_selectedDate)),
                 onTap: () => _selectDate(context),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 15),
               Text(
                 'Select Category',
                 style: TextStyle(
