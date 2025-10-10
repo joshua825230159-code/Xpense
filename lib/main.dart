@@ -1,9 +1,8 @@
-// main.dart (Contoh, sesuaikan dengan file Anda)
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'providers/theme_provider.dart'; // import provider
-import 'screens/main_screen.dart';       // import main_screen
-import 'styles/app_themes.dart';         // import tema
+import 'providers/theme_provider.dart';
+import 'screens/main_screen.dart';
+import 'styles/app_themes.dart';
 
 void main() {
   runApp(
@@ -23,9 +22,9 @@ class MyApp extends StatelessWidget {
       builder: (context, themeProvider, child) {
         return MaterialApp(
           title: 'Xpense App',
-          theme: AppThemes.lightTheme, // Tema terang
-          darkTheme: AppThemes.darkTheme, // Tema gelap
-          themeMode: themeProvider.themeMode, // Mode tema saat ini
+          theme: AppThemes.lightTheme,
+          darkTheme: AppThemes.darkTheme,
+          themeMode: themeProvider.themeMode,
           home: const MainScreen(),
           debugShowCheckedModeBanner: false,
         );
