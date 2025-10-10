@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/account_model.dart';
 import 'add_account_screen.dart';
 
@@ -13,38 +14,17 @@ class ManageAccountsScreen extends StatefulWidget {
 
 class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
   late List<Account> _accounts;
-  late List<Account> _filteredAccounts;
-  List<String> _allTags = [];
-  String? _selectedTag;
 
   bool _isSelectionMode = false;
   final Set<Account> _selectedAccounts = {};
 
+  final currencyFormatter =
+  NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+
   @override
   void initState() {
     super.initState();
-    _accounts = List<Account>.from(widget.accounts);
-    _filteredAccounts = List<Account>.from(_accounts);
-    _extractAllTags();
-  }
-
-  void _extractAllTags() {
-    final allTagsSet = <String>{};
-    for (var account in _accounts) {
-      allTagsSet.addAll(account.tags);
-    }
-    setState(() {
-      _allTags = allTagsSet.toList()..sort();
-    });
-  }
-
-  void _filterAccounts() {
-    setState(() {
-      _filteredAccounts = _accounts
-          .where((account) =>
-      _selectedTag == null || account.tags.contains(_selectedTag!))
-          .toList();
-    });
+    _accounts = List.from(widget.accounts);
   }
 
   void _toggleSelection(Account account) {
@@ -56,6 +36,8 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
       }
       if (_selectedAccounts.isEmpty) {
         _isSelectionMode = false;
+      } else {
+        _isSelectionMode = true;
       }
     });
   }
@@ -67,98 +49,11 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
     });
   }
 
-  void _navigateAndAddAccount(BuildContext context) async {
-    final newAccount = await Navigator.push<Account>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddAccountScreen(allAvailableTags: _allTags),
-      ),
-    );
-
-    if (newAccount != null) {
-      setState(() {
-        _accounts.add(newAccount);
-        _extractAllTags();
-        _filterAccounts();
-      });
-    }
-  }
-
-  void _navigateAndEditAccount(BuildContext context, Account account, int index) async {
-    final originalIndex = _accounts.indexOf(account);
-    if (originalIndex == -1) return;
-
-    final resultAccount = await Navigator.push<Account>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddAccountScreen(
-          account: account,
-          allAvailableTags: _allTags,
-        ),
-      ),
-    );
-
-    if (resultAccount != null) {
-      setState(() {
-        final updatedAccount = Account(
-          id: account.id,
-          name: resultAccount.name,
-          balance: resultAccount.balance,
-          colorValue: resultAccount.colorValue,
-          type: resultAccount.type,
-          tags: resultAccount.tags,
-          goalLimit: resultAccount.goalLimit,
-          budget: resultAccount.budget,
-        );
-
-        _accounts[originalIndex] = updatedAccount;
-        _extractAllTags();
-        _filterAccounts();
-      });
-    }
-  }
-
   void _deleteSelectedAccounts() {
     setState(() {
       _accounts.removeWhere((account) => _selectedAccounts.contains(account));
       _clearSelection();
     });
-    _extractAllTags();
-    _filterAccounts();
-  }
-
-  void _deleteSingleAccount(Account account) {
-    setState(() {
-      _accounts.remove(account);
-    });
-    _extractAllTags();
-    _filterAccounts();
-  }
-
-  void _showSingleDeleteConfirmationDialog(Account account) {
-    showDialog(
-      context: context,
-      builder: (BuildContext ctx) {
-        return AlertDialog(
-          title: const Text('Confirm Deletion'),
-          content: Text('Are you sure you want to delete the account "${account.name}"? This action cannot be undone.'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () => Navigator.of(ctx).pop(),
-            ),
-            TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Delete'),
-              onPressed: () {
-                _deleteSingleAccount(account);
-                Navigator.of(ctx).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   void _showMassDeleteConfirmationDialog() {
@@ -167,7 +62,8 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
       builder: (BuildContext ctx) {
         return AlertDialog(
           title: const Text('Confirm Deletion'),
-          content: Text('Are you sure you want to delete ${_selectedAccounts.length} selected accounts? This action cannot be undone.'),
+          content: Text(
+              'Are you sure you want to delete ${_selectedAccounts.length} selected accounts? This action cannot be undone and will delete all related transactions.'),
           actions: <Widget>[
             TextButton(
               child: const Text('Cancel'),
@@ -187,90 +83,79 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
     );
   }
 
-  void _showFilterSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+  void _navigateAndAddAccount() async {
+    final newAccount = await Navigator.push<Account>(
+      context,
+      MaterialPageRoute(builder: (context) => const AddAccountScreen()),
+    );
+    if (newAccount != null) {
+      setState(() {
+        _accounts.add(newAccount);
+      });
+    }
+  }
+
+  void _editAccount(Account account) async {
+    final updatedAccount = await Navigator.push<Account>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddAccountScreen(account: account),
       ),
-      builder: (context) {
-        String searchQuery = '';
+    );
 
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            final displayedTags = _allTags
-                .where((tag) => tag.toLowerCase().contains(searchQuery.toLowerCase()))
-                .toList();
+    if (updatedAccount != null) {
+      setState(() {
+        final index = _accounts.indexWhere((a) => a.id == updatedAccount.id);
+        if (index != -1) {
+          final finalUpdatedAccount = Account(
+            id: updatedAccount.id,
+            name: updatedAccount.name,
+            balance: updatedAccount.balance,
+            colorValue: updatedAccount.colorValue,
+            type: updatedAccount.type,
+            budget: updatedAccount.budget,
+          );
+          _accounts[index] = finalUpdatedAccount;
+        }
+      });
+    }
+  }
 
-            return Padding(
-              padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
-                  left: 16, right: 16, top: 16
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Filter by Tag',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    onChanged: (value) {
-                      setModalState(() {
-                        searchQuery = value;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'Search tags',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.grey),
-                      ),
-                    ),
-                  ),
-                  const Divider(height: 24),
-                  ListTile(
-                    title: const Text('All Accounts', style: TextStyle(fontWeight: FontWeight.w500)),
-                    leading: Icon(_selectedTag == null ? Icons.check_circle : Icons.radio_button_unchecked, color: Colors.orange),
-                    onTap: () {
-                      setState(() => _selectedTag = null);
-                      _filterAccounts();
-                      Navigator.pop(context);
-                    },
-                  ),
-                  Flexible(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: displayedTags.length,
-                      itemBuilder: (context, index) {
-                        final tag = displayedTags[index];
-                        return ListTile(
-                          title: Text(tag),
-                          leading: Icon(_selectedTag == tag ? Icons.check_circle : Icons.radio_button_unchecked, color: Colors.orange),
-                          onTap: () {
-                            setState(() => _selectedTag = tag);
-                            _filterAccounts();
-                            Navigator.pop(context);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+  void _deleteSingleAccount(Account account) {
+    setState(() {
+      _accounts.removeWhere((a) => a.id == account.id);
+    });
+  }
+
+  void _showSingleDeleteConfirmationDialog(Account account) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Hapus'),
+        content: Text(
+            'Apakah Anda yakin ingin menghapus akun "${account.name}"? Semua transaksi yang terkait juga akan dihapus.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () {
+              _deleteSingleAccount(account);
+              Navigator.of(context).pop();
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return WillPopScope(
       onWillPop: () async {
         if (_isSelectionMode) {
@@ -281,70 +166,140 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
         return true;
       },
       child: Scaffold(
-        appBar: _isSelectionMode ? _buildSelectionAppBar() : _buildDefaultAppBar(),
-        body: Column(
-          children: [
-            Expanded(
-              child: ListView.builder(
-                itemCount: _filteredAccounts.length,
-                itemBuilder: (context, index) {
-                  final account = _filteredAccounts[index];
-                  final isSelected = _selectedAccounts.contains(account);
-                  return ListTile(
-                    onLongPress: () {
-                      if (!_isSelectionMode) {
-                        setState(() {
-                          _isSelectionMode = true;
-                          _toggleSelection(account);
-                        });
-                      }
-                    },
-                    onTap: () {
-                      if (_isSelectionMode) {
-                        _toggleSelection(account);
-                      }
-                    },
-                    leading: CircleAvatar(
-                      backgroundColor: isSelected ? Colors.orange : account.color,
-                      child: isSelected ? const Icon(Icons.check, color: Colors.white) : null,
-                    ),
-                    title: Text(account.name),
-                    subtitle: Text(account.type.name),
-                    trailing: _isSelectionMode
-                        ? Checkbox(
-                      value: isSelected,
-                      onChanged: (bool? value) {
-                        _toggleSelection(account);
-                      },
-                    )
-                        : PopupMenuButton<String>(
-                      onSelected: (value) {
-                        if (value == 'edit') {
-                          _navigateAndEditAccount(context, account, index);
-                        } else if (value == 'delete') {
-                          _showSingleDeleteConfirmationDialog(account);
-                        }
-                      },
-                      itemBuilder: (BuildContext context) => [
-                        const PopupMenuItem<String>(
-                          value: 'edit',
-                          child: Text('Edit'),
-                        ),
-                        const PopupMenuItem<String>(
-                          value: 'delete',
-                          child: Text('Delete'),
-                        ),
-                      ],
-                    ),
-                  );
+        appBar:
+        _isSelectionMode ? _buildSelectionAppBar() : _buildDefaultAppBar(),
+        body: _accounts.isEmpty
+            ? const Center(
+          child: Text('No accounts available.'),
+        )
+            : ListView.builder(
+          itemCount: _accounts.length,
+          itemBuilder: (context, index) {
+            final account = _accounts[index];
+            final isSelected = _selectedAccounts.contains(account);
+            return Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0, vertical: 8.0),
+              child: GestureDetector(
+                onLongPress: () {
+                  if (!_isSelectionMode) {
+                    setState(() {
+                      _isSelectionMode = true;
+                    });
+                  }
+                  _toggleSelection(account);
                 },
+                onTap: () {
+                  if (_isSelectionMode) {
+                    _toggleSelection(account);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.orange.withOpacity(0.1)
+                        : Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      if (!isDarkMode)
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.08),
+                          spreadRadius: 1,
+                          blurRadius: 10,
+                        ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: account.color.withOpacity(0.8),
+                        radius: 20,
+                        child: isSelected
+                            ? const Icon(Icons.check,
+                            color: Colors.white, size: 20)
+                            : Icon(
+                          _getIconForAccountType(account.type),
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              account.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              currencyFormatter.format(account.balance),
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            if (account.budget != null)
+                              Padding(
+                                padding:
+                                const EdgeInsets.only(top: 4.0),
+                                child: Text(
+                                  'Budget: ${currencyFormatter.format(account.budget)}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.orange,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                      if (_isSelectionMode)
+                        Checkbox(
+                          value: isSelected,
+                          onChanged: (value) => _toggleSelection(account),
+                          activeColor: Colors.orange,
+                        )
+                      else
+                        PopupMenuButton<String>(
+                          onSelected: (value) {
+                            if (value == 'edit') {
+                              _editAccount(account);
+                            } else if (value == 'delete') {
+                              _showSingleDeleteConfirmationDialog(
+                                  account);
+                            }
+                          },
+                          itemBuilder: (BuildContext context) => [
+                            const PopupMenuItem<String>(
+                              value: 'edit',
+                              child: Text('Edit'),
+                            ),
+                            const PopupMenuItem<String>(
+                              value: 'delete',
+                              child: Text('Delete'),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
+            );
+          },
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: _isSelectionMode ? null : () => _navigateAndAddAccount(context),
-          backgroundColor: _isSelectionMode ? Colors.grey : Colors.orange,
+        floatingActionButton: _isSelectionMode
+            ? null
+            : FloatingActionButton(
+          onPressed: _navigateAndAddAccount,
+          backgroundColor: Colors.orange,
           child: const Icon(Icons.add, color: Colors.white),
         ),
       ),
@@ -353,16 +308,8 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
 
   AppBar _buildDefaultAppBar() {
     return AppBar(
-      title: const Text("Manage Accounts"),
-      actions: [
-        if (_allTags.isNotEmpty)
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            color: _selectedTag == null ? null : Colors.orange,
-            tooltip: 'Filter by Tag',
-            onPressed: _showFilterSheet,
-          ),
-      ],
+      title: const Text('Manage Accounts'),
+      centerTitle: true,
     );
   }
 
@@ -376,9 +323,26 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
       actions: [
         IconButton(
           icon: const Icon(Icons.delete),
-          onPressed: _showMassDeleteConfirmationDialog,
+          onPressed: _selectedAccounts.isNotEmpty
+              ? _showMassDeleteConfirmationDialog
+              : null,
         ),
       ],
     );
+  }
+
+  IconData _getIconForAccountType(AccountType type) {
+    switch (type) {
+      case AccountType.cash:
+        return Icons.money;
+      case AccountType.bank:
+        return Icons.credit_card;
+      case AccountType.investment:
+        return Icons.trending_up;
+      case AccountType.other:
+        return Icons.account_balance_wallet;
+      default:
+        return Icons.account_balance_wallet;
+    }
   }
 }

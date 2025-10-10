@@ -32,15 +32,9 @@ class Account extends HiveObject with EquatableMixin {
   AccountType type;
 
   @HiveField(4)
-  List<String> tags;
-
-  @HiveField(5)
-  double? goalLimit;
-
-  @HiveField(6)
   double? budget;
 
-  @HiveField(7)
+  @HiveField(5)
   final String id;
 
   Color get color => Color(colorValue);
@@ -50,11 +44,9 @@ class Account extends HiveObject with EquatableMixin {
     this.balance = 0.0,
     required this.colorValue,
     required this.type,
-    List<String>? tags,
-    this.goalLimit,
     this.budget,
     String? id,
-  })  : this.tags = tags ?? [],
+  })  :
         this.id = id ?? const Uuid().v4();
 
   @override
