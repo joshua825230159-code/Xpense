@@ -1,35 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
+import 'package:equatable/equatable.dart';
+import 'package:uuid/uuid.dart';
 
-part 'transaction_model.g.dart';
-
-@HiveType(typeId: 3)
 enum TransactionType {
-  @HiveField(0)
   income,
-
-  @HiveField(1)
   expense,
 }
 
-@HiveType(typeId: 2)
-class Transaction extends HiveObject {
-  @HiveField(0)
+class Transaction with EquatableMixin {
+  final String id;
   String description;
-
-  @HiveField(1)
   double amount;
-
-  @HiveField(2)
   TransactionType type;
-
-  @HiveField(3)
   DateTime date;
-
-  @HiveField(4)
   int iconValue;
-
-  @HiveField(5)
   String? category;
 
   IconData get icon => IconData(iconValue, fontFamily: 'MaterialIcons');
@@ -41,5 +25,12 @@ class Transaction extends HiveObject {
     required this.date,
     required this.iconValue,
     this.category,
-  });
+    String? id,
+  }) : id = id ?? const Uuid().v4();
+
+  @override
+  List<Object?> get props => [id];
+
+  @override
+  bool get stringify => true;
 }
