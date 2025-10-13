@@ -25,11 +25,15 @@ class ExportService {
     }
 
     String csv = const ListToCsvConverter().convert(rows);
-    await _saveAndShareFile(csv.codeUnits, 'expenses-$period.csv', 'text/csv');
+    await _saveAndShareFile(csv.codeUnits, 'transactions-$period.csv', 'text/csv');
   }
 
   Future<void> exportToPdf(List<Transaction> transactions, String period) async {
     final pdf = pw.Document();
+
+    final double totalIncome = transactions
+        .where((t) => t.type == TransactionType.income)
+        .fold(0.0, (sum, item) => sum + item.amount);
     final double totalExpenses = transactions
         .where((t) => t.type == TransactionType.expense)
         .fold(0.0, (sum, item) => sum + item.amount);
@@ -39,20 +43,24 @@ class ExportService {
         build: (context) => [
           pw.Header(
             level: 0,
-            child: pw.Text('Expense Report - $period',
+            child: pw.Text('Transaction Report - $period',
                 style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 24)),
+          ),
+          pw.Paragraph(
+            text: 'Total Income for this period: ${currencyFormatter.format(totalIncome)}',
           ),
           pw.Paragraph(
             text: 'Total Expenses for this period: ${currencyFormatter.format(totalExpenses)}',
           ),
+          pw.SizedBox(height: 20),
           pw.Table.fromTextArray(
-            headers: ['Date', 'Description', 'Category', 'Amount'],
+            headers: ['Date', 'Description', 'Category', 'Type', 'Amount'],
             data: transactions
-                .where((t) => t.type == TransactionType.expense)
                 .map((t) => [
                       DateFormat.yMMMd().format(t.date),
                       t.description,
                       t.category ?? 'Uncategorized',
+                      t.type.name[0].toUpperCase() + t.type.name.substring(1),
                       currencyFormatter.format(t.amount)
                     ])
                 .toList(),
@@ -61,7 +69,7 @@ class ExportService {
       ),
     );
 
-    await _saveAndShareFile((await pdf.save()), 'expenses-$period.pdf', 'application/pdf');
+    await _saveAndShareFile((await pdf.save()), 'transactions-$period.pdf', 'application/pdf');
   }
 
   Future<void> _saveAndShareFile(List<int> bytes, String fileName, String mimeType) async {
