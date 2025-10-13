@@ -28,7 +28,7 @@ class ExpenseListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currencyFormatter =
-    NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+        NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final bool isSelectionMode = selectedTransactions.isNotEmpty;
 
     return SafeArea(
@@ -77,28 +77,28 @@ class ExpenseListScreen extends StatelessWidget {
         if (showTitle) const SizedBox(height: 10),
         transactions.isEmpty
             ? Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 40.0),
-            child: Text(
-              searchQuery.isNotEmpty
-                  ? 'No transactions found.'
-                  : "No transactions for this account yet.",
-              style: const TextStyle(color: Colors.grey, fontSize: 16),
-            ),
-          ),
-        )
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 40.0),
+                  child: Text(
+                    searchQuery.isNotEmpty
+                        ? 'No transactions found.'
+                        : "No transactions for this account yet.",
+                    style: const TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                ),
+              )
             : ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: transactions.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 5),
-          itemBuilder: (context, index) {
-            final transaction = transactions[index];
-            final isSelected = selectedTransactions.contains(transaction);
-            return _buildTransactionItem(
-                context, transaction, currencyFormatter, isSelected);
-          },
-        ),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: transactions.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 5),
+                itemBuilder: (context, index) {
+                  final transaction = transactions[index];
+                  final isSelected = selectedTransactions.contains(transaction);
+                  return _buildTransactionItem(
+                      context, transaction, currencyFormatter, isSelected);
+                },
+              ),
       ],
     );
   }
@@ -111,9 +111,9 @@ class ExpenseListScreen extends StatelessWidget {
     final now = DateTime.now();
     final monthlyExpense = currentTransactions
         .where((t) =>
-    t.type == TransactionType.expense &&
-        t.date.year == now.year &&
-        t.date.month == now.month)
+            t.type == TransactionType.expense &&
+            t.date.year == now.year &&
+            t.date.month == now.month)
         .fold(0.0, (sum, item) => sum + item.amount);
 
     final totalIncome = currentTransactions
@@ -257,27 +257,30 @@ class ExpenseListScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Colors.white70,
-                  shadows: textAndIconShadows,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.white70,
+                    shadows: textAndIconShadows,
+                  ),
                 ),
-              ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                  shadows: textAndIconShadows,
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    shadows: textAndIconShadows,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -287,10 +290,10 @@ class ExpenseListScreen extends StatelessWidget {
   Widget _buildTransactionItem(BuildContext context, Transaction transaction,
       NumberFormat currencyFormatter, bool isSelected) {
     final color =
-    transaction.type == TransactionType.income ? Colors.green : Colors.red;
+        transaction.type == TransactionType.income ? Colors.green : Colors.red;
     final amountSign = transaction.type == TransactionType.income ? '+' : '-';
     final tileColor =
-    isSelected ? Colors.blue.shade100 : Theme.of(context).cardColor;
+        isSelected ? Colors.blue.shade100 : Theme.of(context).cardColor;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
@@ -329,67 +332,73 @@ class ExpenseListScreen extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(15),
+            Expanded(
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Icon(transaction.icon, color: color, size: 24),
                         ),
-                        child: Icon(transaction.icon, color: color, size: 24),
-                      ),
-                      if (isSelected)
-                        Positioned(
-                          top: -4,
-                          right: -4,
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color: Colors.blue,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: Theme.of(context).cardColor,
-                                  width: 1.5),
-                            ),
-                            child: const Icon(
-                              Icons.check,
-                              color: Colors.white,
-                              size: 14,
+                        if (isSelected)
+                          Positioned(
+                            top: -4,
+                            right: -4,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: Theme.of(context).cardColor,
+                                    width: 1.5),
+                              ),
+                              child: const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 14,
+                              ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 15),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      transaction.description,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          transaction.description,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          DateFormat.yMMMd().add_jm().format(transaction.date),
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      DateFormat.yMMMd().add_jm().format(transaction.date),
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(width: 8),
             Text(
               "$amountSign ${currencyFormatter.format(transaction.amount)}",
               style: TextStyle(
