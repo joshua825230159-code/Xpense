@@ -131,13 +131,13 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Konfirmasi Hapus'),
+        title: const Text('Confirm Deletion'),
         content: Text(
-            'Apakah Anda yakin ingin menghapus akun "${account.name}"? Semua transaksi yang terkait juga akan dihapus.'),
+            'Are you sure you want to delete "${account.name}"? All transactions in this account will also be deleted.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Batal'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
@@ -145,7 +145,7 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
               Navigator.of(context).pop();
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Hapus'),
+            child: const Text('Delete'),
           ),
         ],
       ),

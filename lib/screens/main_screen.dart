@@ -247,18 +247,18 @@ class _MainScreenState extends State<MainScreen> {
     final bool? confirmed = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Konfirmasi Hapus'),
+        title: const Text('Confirm Deletion'),
         content: Text(
-            'Anda yakin ingin menghapus ${_selectedTransactions.length} transaksi? Aksi ini tidak dapat dibatalkan.'),
+            'Are you sure you want to delete ${_selectedTransactions.length} transactions? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Batal'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Hapus'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -448,7 +448,7 @@ class _MainScreenState extends State<MainScreen> {
 
   AppBar _buildSelectionAppBar() {
     return AppBar(
-      title: Text('${_selectedTransactions.length} dipilih'),
+      title: Text('${_selectedTransactions.length} chosen'),
       leading: IconButton(
         icon: const Icon(Icons.close),
         onPressed: _exitSelectionMode,

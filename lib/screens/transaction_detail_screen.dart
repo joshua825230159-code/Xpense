@@ -266,7 +266,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Simpan Perubahan',
+            child: const Text('Save Changes',
                 style: TextStyle(fontSize: 16, color: Colors.white)),
             onPressed: _saveChanges,
           ),
