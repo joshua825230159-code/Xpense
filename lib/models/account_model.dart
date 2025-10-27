@@ -33,4 +33,28 @@ class Account with EquatableMixin {
 
   @override
   bool get stringify => true;
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'balance': balance,
+      'colorValue': colorValue,
+      'type': type.name,
+      'budget': budget,
+    };
+  }
+
+  factory Account.fromMap(Map<String, dynamic> map) {
+    return Account(
+      id: map['id'],
+      name: map['name'],
+      balance: map['balance'],
+      colorValue: map['colorValue'],
+      type: AccountType.values.firstWhere(
+            (e) => e.name == map['type'],
+      ),
+      budget: map['budget'],
+    );
+  }
 }

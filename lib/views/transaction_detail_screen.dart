@@ -65,6 +65,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
   void _saveChanges() {
     final updatedTransaction = Transaction(
+      id: widget.transaction.id,
+      accountId: widget.transaction.accountId,
       description: _descriptionController.text,
       amount: double.tryParse(_amountController.text) ?? 0.0,
       type: _transactionType,

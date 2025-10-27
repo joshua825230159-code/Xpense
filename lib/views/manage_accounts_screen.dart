@@ -1,32 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:xpense/viewmodels/main_viewmodel.dart';
 import '../models/account_model.dart';
 import 'add_account_screen.dart';
 
 class ManageAccountsScreen extends StatefulWidget {
-  final List<Account> accounts;
-
-  const ManageAccountsScreen({super.key, required this.accounts});
+  const ManageAccountsScreen({super.key});
 
   @override
   _ManageAccountsScreenState createState() => _ManageAccountsScreenState();
 }
 
 class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
-  late List<Account> _accounts;
 
   bool _isSelectionMode = false;
   final Set<Account> _selectedAccounts = {};
 
   final currencyFormatter =
   NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-
-  @override
-  void initState() {
-    super.initState();
-    _accounts = List.from(widget.accounts);
-  }
-
   void _toggleSelection(Account account) {
     setState(() {
       if (_selectedAccounts.contains(account)) {
@@ -50,10 +42,8 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
   }
 
   void _deleteSelectedAccounts() {
-    setState(() {
-      _accounts.removeWhere((account) => _selectedAccounts.contains(account));
-      _clearSelection();
-    });
+    context.read<MainViewModel>().deleteAccounts(_selectedAccounts);
+    _clearSelection();
   }
 
   void _showMassDeleteConfirmationDialog() {
@@ -89,9 +79,7 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
       MaterialPageRoute(builder: (context) => const AddAccountScreen()),
     );
     if (newAccount != null) {
-      setState(() {
-        _accounts.add(newAccount);
-      });
+      context.read<MainViewModel>().addAccount(newAccount);
     }
   }
 
@@ -104,27 +92,12 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
     );
 
     if (updatedAccount != null) {
-      setState(() {
-        final index = _accounts.indexWhere((a) => a.id == updatedAccount.id);
-        if (index != -1) {
-          final finalUpdatedAccount = Account(
-            id: updatedAccount.id,
-            name: updatedAccount.name,
-            balance: updatedAccount.balance,
-            colorValue: updatedAccount.colorValue,
-            type: updatedAccount.type,
-            budget: updatedAccount.budget,
-          );
-          _accounts[index] = finalUpdatedAccount;
-        }
-      });
+      context.read<MainViewModel>().updateAccount(updatedAccount);
     }
   }
 
   void _deleteSingleAccount(Account account) {
-    setState(() {
-      _accounts.removeWhere((a) => a.id == account.id);
-    });
+    context.read<MainViewModel>().deleteAccounts({account});
   }
 
   void _showSingleDeleteConfirmationDialog(Account account) {
@@ -155,6 +128,8 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final viewModel = context.watch<MainViewModel>();
+    final accounts = viewModel.accounts;
 
     return WillPopScope(
       onWillPop: () async {
@@ -162,20 +137,20 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
           _clearSelection();
           return false;
         }
-        Navigator.of(context).pop(_accounts);
+        Navigator.of(context).pop();
         return true;
       },
       child: Scaffold(
         appBar:
         _isSelectionMode ? _buildSelectionAppBar() : _buildDefaultAppBar(),
-        body: _accounts.isEmpty
+        body: accounts.isEmpty
             ? const Center(
           child: Text('No accounts available.'),
         )
             : ListView.builder(
-          itemCount: _accounts.length,
+          itemCount: accounts.length,
           itemBuilder: (context, index) {
-            final account = _accounts[index];
+            final account = accounts[index];
             final isSelected = _selectedAccounts.contains(account);
             return Padding(
               padding: const EdgeInsets.symmetric(
@@ -213,7 +188,8 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                   child: Row(
                     children: [
                       CircleAvatar(
-                        backgroundColor: account.color.withOpacity(0.8),
+                        backgroundColor:
+                        account.color.withOpacity(0.8),
                         radius: 20,
                         child: isSelected
                             ? const Icon(Icons.check,
@@ -227,7 +203,8 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                       const SizedBox(width: 15),
                       Expanded(
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment:
+                          CrossAxisAlignment.start,
                           children: [
                             Text(
                               account.name,
@@ -238,7 +215,8 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              currencyFormatter.format(account.balance),
+                              currencyFormatter
+                                  .format(account.balance),
                               style: TextStyle(
                                 color: Colors.grey.shade600,
                                 fontWeight: FontWeight.w500,
@@ -260,11 +238,11 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                           ],
                         ),
                       ),
-
                       if (_isSelectionMode)
                         Checkbox(
                           value: isSelected,
-                          onChanged: (value) => _toggleSelection(account),
+                          onChanged: (value) =>
+                              _toggleSelection(account),
                           activeColor: Colors.orange,
                         )
                       else

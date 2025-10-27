@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:xpense/viewmodels/main_viewmodel.dart';
 import '../models/account_model.dart';
 import '../models/transaction_model.dart';
 import '../providers/theme_provider.dart';
@@ -21,10 +22,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  List<Account> _accounts = [];
-  Account? _activeAccount;
-  Map<Account, List<Transaction>> _accountTransactions = {};
 
   final currencyFormatter =
   NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
@@ -91,8 +88,9 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _showExportDialog() {
+    final viewModel = context.read<MainViewModel>();
     final List<Transaction> allTransactions =
-    _activeAccount != null ? _accountTransactions[_activeAccount!] ?? [] : [];
+        viewModel.transactionsForActiveAccount;
 
     final now = DateTime.now();
     List<Transaction> periodTransactions;
@@ -160,11 +158,7 @@ class _MainScreenState extends State<MainScreen> {
     );
 
     if (newAccount != null) {
-      setState(() {
-        _accounts.add(newAccount);
-        _activeAccount = newAccount;
-        _accountTransactions.putIfAbsent(newAccount, () => []);
-      });
+      context.read<MainViewModel>().addAccount(newAccount);
     }
   }
 
@@ -172,46 +166,16 @@ class _MainScreenState extends State<MainScreen> {
     if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
       Navigator.of(context).pop();
     }
-    final updatedAccounts = await Navigator.push<List<Account>>(
+    await Navigator.push<List<Account>>(
       context,
       MaterialPageRoute(
-        builder: (context) => ManageAccountsScreen(accounts: _accounts),
+        builder: (context) => const ManageAccountsScreen(),
       ),
     );
-
-    if (updatedAccounts != null) {
-      setState(() {
-        final newTransactionMap = <Account, List<Transaction>>{};
-        for (final newAccount in updatedAccounts) {
-          final existingTransactions = _accountTransactions[newAccount];
-          newTransactionMap[newAccount] = existingTransactions ?? [];
-        }
-
-        Account? newActiveAccount;
-        if (_activeAccount != null) {
-          for (final account in updatedAccounts) {
-            if (account.id == _activeAccount!.id) {
-              newActiveAccount = account;
-              break;
-            }
-          }
-        }
-
-        if (newActiveAccount == null && updatedAccounts.isNotEmpty) {
-          newActiveAccount = updatedAccounts.first;
-        }
-
-        _accounts = updatedAccounts;
-        _accountTransactions = newTransactionMap;
-        _activeAccount = newActiveAccount;
-      });
-    }
   }
 
   void _startSearch() {
-    setState(() {
-      _isSearching = true;
-    });
+    setState(() => _isSearching = true);
   }
 
   void _stopSearch() {
@@ -223,9 +187,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _updateSearchQuery(String newQuery) {
-    setState(() {
-      _searchQuery = newQuery;
-    });
+    setState(() => _searchQuery = newQuery);
   }
 
   void _onSelectionChanged(Set<Transaction> selected) {
@@ -265,32 +227,15 @@ class _MainScreenState extends State<MainScreen> {
     );
 
     if (confirmed == true) {
-      setState(() {
-        if (_activeAccount == null) return;
-
-        for (var transaction in _selectedTransactions) {
-          if (transaction.type == TransactionType.income) {
-            _activeAccount!.balance -= transaction.amount;
-          } else {
-            _activeAccount!.balance += transaction.amount;
-          }
-        }
-        _accountTransactions[_activeAccount!]?.removeWhere(
-              (t) => _selectedTransactions.contains(t),
-        );
-        _exitSelectionMode();
-      });
+      context
+          .read<MainViewModel>()
+          .deleteTransactions(_selectedTransactions);
+      _exitSelectionMode();
     }
   }
 
   void _navigateToTransactionDetail(Transaction transaction) async {
     if (_isSelectionMode) return;
-
-    final Transaction originalTransaction = transaction;
-    final List<Transaction>? transactionList =
-    _accountTransactions[_activeAccount!];
-
-    if (transactionList == null) return;
 
     final updatedTransaction = await Navigator.push<Transaction>(
       context,
@@ -301,57 +246,32 @@ class _MainScreenState extends State<MainScreen> {
     );
 
     if (updatedTransaction != null) {
-      setState(() {
-        final index = transactionList.indexOf(originalTransaction);
-        if (index != -1) {
-          if (originalTransaction.type == TransactionType.income) {
-            _activeAccount!.balance -= originalTransaction.amount;
-          } else {
-            _activeAccount!.balance += originalTransaction.amount;
-          }
-
-          if (updatedTransaction.type == TransactionType.income) {
-            _activeAccount!.balance += updatedTransaction.amount;
-          } else {
-            _activeAccount!.balance -= updatedTransaction.amount;
-          }
-
-          transactionList[index] = updatedTransaction;
-        }
-      });
+      context
+          .read<MainViewModel>()
+          .updateTransaction(transaction, updatedTransaction);
     }
   }
 
   void _changeActiveAccount(Account account) {
-    setState(() {
-      _activeAccount = account;
-      if (_isSearching) _stopSearch();
-      if (_isSelectionMode) _exitSelectionMode();
-    });
+    context.read<MainViewModel>().changeActiveAccount(account);
+
+    if (_isSearching) _stopSearch();
+    if (_isSelectionMode) _exitSelectionMode();
     Navigator.pop(context);
   }
 
   void _addTransaction(Transaction transaction) {
-    setState(() {
-      if (_activeAccount != null) {
-        _accountTransactions.putIfAbsent(_activeAccount!, () => []);
-        _accountTransactions[_activeAccount!]?.insert(0, transaction);
-        if (transaction.type == TransactionType.income) {
-          _activeAccount!.balance += transaction.amount;
-        } else {
-          _activeAccount!.balance -= transaction.amount;
-        }
-      }
-    });
+    context.read<MainViewModel>().addTransaction(transaction);
   }
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    setState(() => _selectedIndex = index);
   }
 
   void _showAddTransactionSheet(BuildContext context) {
+    final activeAccount = context.read<MainViewModel>().activeAccount;
+    if (activeAccount == null) return;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -360,6 +280,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       builder: (ctx) {
         return AddTransactionSheet(
+          accountId: activeAccount.id,
           onAddTransaction: (transaction) {
             _addTransaction(transaction);
           },
@@ -370,8 +291,16 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Transaction> allTransactions =
-    _activeAccount != null ? _accountTransactions[_activeAccount!] ?? [] : [];
+    final viewModel = context.watch<MainViewModel>();
+    final allTransactions = viewModel.transactionsForActiveAccount;
+    final activeAccount = viewModel.activeAccount;
+    final accounts = viewModel.accounts;
+
+    if (viewModel.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     final filteredTransactions = allTransactions.where((transaction) {
       return transaction.description
@@ -381,7 +310,7 @@ class _MainScreenState extends State<MainScreen> {
 
     final List<Widget> pages = [
       ExpenseListScreen(
-        activeAccount: _activeAccount,
+        activeAccount: activeAccount,
         transactions: filteredTransactions,
         isSearching: _isSearching,
         searchQuery: _searchQuery,
@@ -390,9 +319,9 @@ class _MainScreenState extends State<MainScreen> {
         onDeleteTransactions: (Set<Transaction> toDelete) {},
         onTransactionTap: _navigateToTransactionDetail,
       ),
-      if (_activeAccount != null)
+      if (activeAccount != null)
         StatsScreen(
-          account: _activeAccount!,
+          account: activeAccount,
           transactions: List.from(allTransactions),
           selectedPeriod: _selectedPeriod,
           selectedType: _selectedTransactionType,
@@ -403,16 +332,18 @@ class _MainScreenState extends State<MainScreen> {
       key: _scaffoldKey,
       appBar: _isSelectionMode
           ? _buildSelectionAppBar()
-          : (_isSearching ? _buildSearchAppBar() : _buildDefaultAppBar()),
-      drawer: _buildDrawer(),
-      body: _accounts.isEmpty
+          : (_isSearching
+          ? _buildSearchAppBar()
+          : _buildDefaultAppBar(activeAccount)),
+      drawer: _buildDrawer(accounts, activeAccount),
+      body: accounts.isEmpty
           ? _buildEmptyState()
           : IndexedStack(
         index: _selectedIndex,
         children: pages,
       ),
       floatingActionButton:
-      (_accounts.isEmpty || _isSearching || _isSelectionMode)
+      (accounts.isEmpty || _isSearching || _isSelectionMode)
           ? null
           : FloatingActionButton(
         onPressed: () => _showAddTransactionSheet(context),
@@ -422,7 +353,7 @@ class _MainScreenState extends State<MainScreen> {
         shape: const CircleBorder(),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: _accounts.isEmpty
+      bottomNavigationBar: accounts.isEmpty
           ? null
           : BottomAppBar(
         height: 60.0,
@@ -462,7 +393,7 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  AppBar _buildDefaultAppBar() {
+  AppBar _buildDefaultAppBar(Account? activeAccount) {
     final String toggleTypeTitle =
     _selectedTransactionType == TransactionType.expense
         ? 'View Income'
@@ -482,7 +413,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       title: Text(
         _selectedIndex == 0
-            ? (_activeAccount?.name ?? "No Account")
+            ? (activeAccount?.name ?? "No Account")
             : "Statistics",
       ),
       centerTitle: true,
@@ -590,7 +521,7 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Drawer _buildDrawer() {
+  Drawer _buildDrawer(List<Account> accounts, Account? activeAccount) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
 
@@ -616,14 +547,14 @@ class _MainScreenState extends State<MainScreen> {
           ),
           const Divider(),
           _buildDrawerSectionTitle("Accounts"),
-          ..._accounts.map((account) => ListTile(
+          ...accounts.map((account) => ListTile(
             leading: CircleAvatar(
               backgroundColor: account.color,
               radius: 16,
             ),
             title: Text(account.name),
             subtitle: Text(currencyFormatter.format(account.balance)),
-            selected: account == _activeAccount,
+            selected: account == activeAccount,
             selectedTileColor: Colors.orange.withOpacity(0.1),
             onTap: () => _changeActiveAccount(account),
           )),
@@ -636,7 +567,9 @@ class _MainScreenState extends State<MainScreen> {
               themeProvider.toggleTheme(value);
             },
             secondary: Icon(
-              isDarkMode ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+              isDarkMode
+                  ? Icons.dark_mode_outlined
+                  : Icons.light_mode_outlined,
             ),
           ),
         ],

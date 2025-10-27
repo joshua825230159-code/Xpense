@@ -4,8 +4,13 @@ import '../models/transaction_model.dart';
 
 class AddTransactionSheet extends StatefulWidget {
   final Function(Transaction) onAddTransaction;
+  final String accountId;
 
-  const AddTransactionSheet({super.key, required this.onAddTransaction});
+  const AddTransactionSheet({
+    super.key,
+    required this.onAddTransaction,
+    required this.accountId,
+  });
 
   @override
   State<AddTransactionSheet> createState() => _AddTransactionSheetState();
@@ -52,6 +57,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
   void _submitData() {
     if (_formKey.currentState!.validate()) {
       final newTransaction = Transaction(
+        accountId: widget.accountId,
         description: _descriptionController.text,
         amount: double.parse(_amountController.text),
         type: _transactionType,

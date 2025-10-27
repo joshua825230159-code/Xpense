@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:xpense/services/sqlite_service.dart';
+import 'package:xpense/viewmodels/main_viewmodel.dart';
 import 'providers/theme_provider.dart';
-import 'screens/main_screen.dart';
-import 'styles/app_themes.dart';
+import 'views/main_screen.dart';
+import 'utils/app_themes.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SqliteService.instance.database;
+
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => MainViewModel()),
+      ],
       child: const MyApp(),
     ),
   );
