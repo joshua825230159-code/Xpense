@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xpense/services/sqlite_service.dart';
+import 'package:xpense/viewmodels/auth_viewmodel.dart';
 import 'package:xpense/viewmodels/main_viewmodel.dart';
+import 'package:xpense/views/auth_wrapper.dart';
 import 'providers/theme_provider.dart';
-import 'views/main_screen.dart';
 import 'utils/app_themes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Ensure database is initialized
   await SqliteService.instance.database;
 
   runApp(
@@ -15,6 +17,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => MainViewModel()),
+        ChangeNotifierProvider(create: (_) => AuthViewModel()),
       ],
       child: const MyApp(),
     ),
@@ -33,7 +36,7 @@ class MyApp extends StatelessWidget {
           theme: AppThemes.lightTheme,
           darkTheme: AppThemes.darkTheme,
           themeMode: themeProvider.themeMode,
-          home: const MainScreen(),
+          home: const AuthWrapper(), // <-- This is the change
           debugShowCheckedModeBanner: false,
         );
       },

@@ -1,7 +1,12 @@
+// lib/services/sqlite_service.dart
+
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart' hide Transaction;
 import '../models/account_model.dart';
 import '../models/transaction_model.dart';
+import '../models/user_model.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 class SqliteService {
   static final SqliteService instance = SqliteService._init();
@@ -21,8 +26,9 @@ class SqliteService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // <-- CHANGED FROM 1 TO 2
       onCreate: _createDB,
+      onUpgrade: _onUpgrade, // <-- ADDED THIS LINE
       onConfigure: _onConfigure,
     );
   }
@@ -31,7 +37,18 @@ class SqliteService {
     await db.execute('PRAGMA foreign_keys = ON');
   }
 
+  // _createDB runs ONLY if the database file does not exist.
   Future _createDB(Database db, int version) async {
+    // User table
+    await db.execute('''
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL
+      )
+    ''');
+
+    // Your existing tables
     await db.execute('''
       CREATE TABLE accounts (
         id TEXT PRIMARY KEY,
@@ -57,6 +74,83 @@ class SqliteService {
       )
     ''');
   }
+
+  // --- ADDED THIS NEW METHOD ---
+  // _onUpgrade runs if the database file EXISTS but the version is LOWER
+  // than the one passed to openDatabase (we new-version 2, old-version 1)
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // We are upgrading from version 1 to 2
+      // We need to add the 'users' table
+      await db.execute('''
+        CREATE TABLE users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          password TEXT NOT NULL
+        )
+      ''');
+    }
+    // Add other 'if (oldVersion < 3) { ... }' blocks here for future upgrades
+  }
+
+  // --- User Methods ---
+
+  String _hashPassword(String password) {
+    final bytes = utf8.encode(password); // data being hashed
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  Future<User?> registerUser(String username, String password) async {
+    final db = await instance.database;
+
+    // Check if username already exists
+    final existing =
+        await db.query('users', where: 'username = ?', whereArgs: [username]);
+
+    if (existing.isNotEmpty) {
+      return null; // Username already taken
+    }
+
+    final hashedPassword = _hashPassword(password);
+    final user = User(username: username, password: hashedPassword);
+
+    final id = await db.insert('users', user.toMap());
+    return user.copyWith(id: id);
+  }
+
+  Future<User?> login(String username, String password) async {
+    final db = await instance.database;
+    final hashedPassword = _hashPassword(password);
+
+    final result = await db.query(
+      'users',
+      where: 'username = ? AND password = ?',
+      whereArgs: [username, hashedPassword],
+    );
+
+    if (result.isNotEmpty) {
+      return User.fromMap(result.first);
+    } else {
+      return null;
+    }
+  }
+
+  Future<User?> getUserById(int id) async {
+    final db = await instance.database;
+    final maps = await db.query(
+      'users',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (maps.isNotEmpty) {
+      return User.fromMap(maps.first);
+    } else {
+      return null;
+    }
+  }
+
+  // --- Account Methods ---
 
   Future<void> createAccount(Account account) async {
     final db = await instance.database;
@@ -110,6 +204,8 @@ class SqliteService {
     }
     await batch.commit(noResult: true);
   }
+
+  // --- Transaction Methods ---
 
   Future<void> createTransaction(Transaction transaction) async {
     final db = await instance.database;
