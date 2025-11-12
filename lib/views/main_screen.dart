@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xpense/viewmodels/main_viewmodel.dart';
-import 'package:xpense/viewmodels/auth_viewmodel.dart'; // <-- This is the fix
+import 'package:xpense/viewmodels/auth_viewmodel.dart';
 import '../models/account_model.dart';
 import '../models/transaction_model.dart';
 import '../providers/theme_provider.dart';
@@ -89,6 +89,32 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _showExportDialog() {
+    final auth = context.read<AuthViewModel>();
+    if (!(auth.user?.isPremium ?? false)) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Premium Feature'),
+          content: const Text('Exporting data is a premium feature. Please upgrade your account to use it.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                // Open the drawer
+                _scaffoldKey.currentState?.openDrawer(); 
+              },
+              child: const Text('Upgrade'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final viewModel = context.read<MainViewModel>();
     final List<Transaction> allTransactions =
         viewModel.transactionsForActiveAccount;
@@ -406,6 +432,9 @@ class _MainScreenState extends State<MainScreen> {
             : Icons.score;
 
     final iconColor = Theme.of(context).appBarTheme.iconTheme?.color;
+    
+    final auth = context.watch<AuthViewModel>();
+    final isPremium = auth.user?.isPremium ?? false;
 
     return AppBar(
       leading: IconButton(
@@ -433,7 +462,7 @@ class _MainScreenState extends State<MainScreen> {
               } else if (value == 'sort') {
                 _showSortDialog();
               } else if (value == 'export') {
-                _showExportDialog();
+                _showExportDialog(); // The check is inside this method
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -458,13 +487,14 @@ class _MainScreenState extends State<MainScreen> {
                   ],
                 ),
               ),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'export',
+                enabled: isPremium,
                 child: Row(
                   children: [
-                    Icon(Icons.share_outlined),
-                    SizedBox(width: 12),
-                    Text('Export Data'),
+                    Icon(isPremium ? Icons.share_outlined : Icons.lock_outline),
+                    const SizedBox(width: 12),
+                    Text(isPremium ? 'Export Data' : 'Export (Premium)'),
                   ],
                 ),
               ),
@@ -525,7 +555,9 @@ class _MainScreenState extends State<MainScreen> {
   Drawer _buildDrawer(List<Account> accounts, Account? activeAccount) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
-    final authViewModel = context.read<AuthViewModel>(); // Get AuthViewModel
+    
+    final authViewModel = context.watch<AuthViewModel>();
+    final isPremium = authViewModel.user?.isPremium ?? false;
 
     return Drawer(
       child: ListView(
@@ -533,12 +565,15 @@ class _MainScreenState extends State<MainScreen> {
         children: [
           UserAccountsDrawerHeader(
             accountName: Text(
-                authViewModel.user?.username ?? "Xpense"), // Show username
-            accountEmail: const Text("Track your expenses"),
-            currentAccountPicture: const CircleAvatar(
+                authViewModel.user?.username ?? "Xpense"),
+            accountEmail: Text(isPremium ? "Premium Member" : "Track your expenses"),
+            currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
-              child:
-                  Icon(Icons.monetization_on, color: Colors.orange, size: 40),
+              child: Icon(
+                isPremium ? Icons.star : Icons.monetization_on,
+                color: Colors.orange,
+                size: 40,
+              ),
             ),
             decoration: const BoxDecoration(color: Colors.orange),
           ),
@@ -575,11 +610,36 @@ class _MainScreenState extends State<MainScreen> {
                   : Icons.light_mode_outlined,
             ),
           ),
+
+          if (isPremium)
+            const ListTile(
+              leading: Icon(Icons.star, color: Colors.orange),
+              title: Text('Premium Member'),
+              subtitle: Text('You have access to all features!'),
+            )
+          else
+            ListTile(
+              leading: const Icon(Icons.star_border),
+              title: const Text('Become Premium'),
+              subtitle: const Text('Unlock data export and more!'),
+              onTap: () async {
+                // Simulate premium upgrade
+                await context.read<AuthViewModel>().becomePremium();
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Congratulations, you are now a Premium Member!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+            ),
+
           ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Logout'),
             onTap: () {
-              Navigator.of(context).pop(); // Close drawer
+              Navigator.of(context).pop();
               context.read<AuthViewModel>().logout();
             },
           ),
