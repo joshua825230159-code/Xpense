@@ -2,6 +2,9 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart' hide Transaction;
 import '../models/account_model.dart';
 import '../models/transaction_model.dart';
+import '../models/user_model.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 class SqliteService {
   static final SqliteService instance = SqliteService._init();
@@ -21,8 +24,9 @@ class SqliteService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 3, // <-- CHANGED FROM 2 TO 3
       onCreate: _createDB,
+      onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
     );
   }
@@ -32,6 +36,15 @@ class SqliteService {
   }
 
   Future _createDB(Database db, int version) async {
+    // User table
+    await db.execute('''
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL
+      )
+    ''');
+
     await db.execute('''
       CREATE TABLE accounts (
         id TEXT PRIMARY KEY,
@@ -39,7 +52,9 @@ class SqliteService {
         balance REAL NOT NULL,
         colorValue INTEGER NOT NULL,
         type TEXT NOT NULL,
-        budget REAL
+        budget REAL,
+        userId INTEGER,
+        FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
       )
     ''');
 
@@ -58,8 +73,78 @@ class SqliteService {
     ''');
   }
 
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Add users table (from version 1 to 2)
+      await db.execute('''
+        CREATE TABLE users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          password TEXT NOT NULL
+        )
+      ''');
+    }
+    if (oldVersion < 3) {
+      await db.execute('''
+        ALTER TABLE accounts ADD COLUMN userId INTEGER 
+        REFERENCES users(id) ON DELETE CASCADE
+      ''');
+    }
+  }
+
+  String _hashPassword(String password) {
+    final bytes = utf8.encode(password); // data being hashed
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  Future<User?> registerUser(String username, String password) async {
+    final db = await instance.database;
+    final existing =
+        await db.query('users', where: 'username = ?', whereArgs: [username]);
+    if (existing.isNotEmpty) {
+      return null;
+    }
+    final hashedPassword = _hashPassword(password);
+    final user = User(username: username, password: hashedPassword);
+    final id = await db.insert('users', user.toMap());
+    return user.copyWith(id: id);
+  }
+
+  Future<User?> login(String username, String password) async {
+    final db = await instance.database;
+    final hashedPassword = _hashPassword(password);
+    final result = await db.query(
+      'users',
+      where: 'username = ? AND password = ?',
+      whereArgs: [username, hashedPassword],
+    );
+    if (result.isNotEmpty) {
+      return User.fromMap(result.first);
+    } else {
+      return null;
+    }
+  }
+
+  Future<User?> getUserById(int id) async {
+    final db = await instance.database;
+    final maps = await db.query(
+      'users',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (maps.isNotEmpty) {
+      return User.fromMap(maps.first);
+    } else {
+      return null;
+    }
+  }
+
+  // --- Account Methods ---
+
   Future<void> createAccount(Account account) async {
     final db = await instance.database;
+    // account.toMap() will now include the userId
     await db.insert('accounts', account.toMap());
   }
 
@@ -77,9 +162,14 @@ class SqliteService {
     }
   }
 
-  Future<List<Account>> getAllAccounts() async {
+  Future<List<Account>> getAllAccountsForUser(int userId) async {
     final db = await instance.database;
-    final result = await db.query('accounts', orderBy: 'name ASC');
+    final result = await db.query(
+      'accounts',
+      where: 'userId = ?',
+      whereArgs: [userId],
+      orderBy: 'name ASC',
+    );
     return result.map((json) => Account.fromMap(json)).toList();
   }
 

@@ -1,3 +1,5 @@
+// lib/models/account_model.dart
+
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:equatable/equatable.dart';
@@ -16,6 +18,7 @@ class Account with EquatableMixin {
   AccountType type;
   double? budget;
   final String id;
+  final int? userId;
 
   Color get color => Color(colorValue);
 
@@ -26,6 +29,7 @@ class Account with EquatableMixin {
     required this.type,
     this.budget,
     String? id,
+    this.userId,
   }) : id = id ?? const Uuid().v4();
 
   @override
@@ -33,6 +37,26 @@ class Account with EquatableMixin {
 
   @override
   bool get stringify => true;
+
+  Account copyWith({
+    String? name,
+    double? balance,
+    int? colorValue,
+    AccountType? type,
+    double? budget,
+    String? id,
+    int? userId,
+  }) {
+    return Account(
+      name: name ?? this.name,
+      balance: balance ?? this.balance,
+      colorValue: colorValue ?? this.colorValue,
+      type: type ?? this.type,
+      budget: budget ?? this.budget,
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -42,6 +66,7 @@ class Account with EquatableMixin {
       'colorValue': colorValue,
       'type': type.name,
       'budget': budget,
+      'userId': userId,
     };
   }
 
@@ -52,9 +77,10 @@ class Account with EquatableMixin {
       balance: map['balance'],
       colorValue: map['colorValue'],
       type: AccountType.values.firstWhere(
-            (e) => e.name == map['type'],
+        (e) => e.name == map['type'],
       ),
       budget: map['budget'],
+      userId: map['userId'],
     );
   }
 }

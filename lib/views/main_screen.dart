@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xpense/viewmodels/main_viewmodel.dart';
+import 'package:xpense/viewmodels/auth_viewmodel.dart'; // <-- This is the fix
 import '../models/account_model.dart';
 import '../models/transaction_model.dart';
 import '../providers/theme_provider.dart';
@@ -24,7 +25,7 @@ class _MainScreenState extends State<MainScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   final currencyFormatter =
-  NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
+      NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
 
   int _selectedIndex = 0;
   String _selectedPeriod = 'Monthly';
@@ -58,9 +59,9 @@ class _MainScreenState extends State<MainScreen> {
   void _toggleTransactionType() {
     setState(() {
       _selectedTransactionType =
-      _selectedTransactionType == TransactionType.expense
-          ? TransactionType.income
-          : TransactionType.expense;
+          _selectedTransactionType == TransactionType.expense
+              ? TransactionType.income
+              : TransactionType.expense;
     });
   }
 
@@ -106,7 +107,7 @@ class _MainScreenState extends State<MainScreen> {
       case 'Weekly':
         final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
         final firstDayOfWeek =
-        DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+            DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
         periodTransactions = allTransactions.where((t) {
           return t.date
               .isAfter(firstDayOfWeek.subtract(const Duration(seconds: 1)));
@@ -333,47 +334,47 @@ class _MainScreenState extends State<MainScreen> {
       appBar: _isSelectionMode
           ? _buildSelectionAppBar()
           : (_isSearching
-          ? _buildSearchAppBar()
-          : _buildDefaultAppBar(activeAccount)),
+              ? _buildSearchAppBar()
+              : _buildDefaultAppBar(activeAccount)),
       drawer: _buildDrawer(accounts, activeAccount),
       body: accounts.isEmpty
           ? _buildEmptyState()
           : IndexedStack(
-        index: _selectedIndex,
-        children: pages,
-      ),
+              index: _selectedIndex,
+              children: pages,
+            ),
       floatingActionButton:
-      (accounts.isEmpty || _isSearching || _isSelectionMode)
-          ? null
-          : FloatingActionButton(
-        onPressed: () => _showAddTransactionSheet(context),
-        backgroundColor: Colors.orange,
-        child:
-        const Icon(Icons.add, color: Colors.white, size: 30),
-        shape: const CircleBorder(),
-      ),
+          (accounts.isEmpty || _isSearching || _isSelectionMode)
+              ? null
+              : FloatingActionButton(
+                  onPressed: () => _showAddTransactionSheet(context),
+                  backgroundColor: Colors.orange,
+                  child:
+                      const Icon(Icons.add, color: Colors.white, size: 30),
+                  shape: const CircleBorder(),
+                ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: accounts.isEmpty
           ? null
           : BottomAppBar(
-        height: 60.0,
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: <Widget>[
-            _buildBottomNavItem(
-                icon: Icons.home,
-                isSelected: _selectedIndex == 0,
-                onTap: () => _onItemTapped(0)),
-            const SizedBox(width: 40),
-            _buildBottomNavItem(
-                icon: Icons.bar_chart,
-                isSelected: _selectedIndex == 1,
-                onTap: () => _onItemTapped(1)),
-          ],
-        ),
-      ),
+              height: 60.0,
+              shape: const CircularNotchedRectangle(),
+              notchMargin: 8.0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: <Widget>[
+                  _buildBottomNavItem(
+                      icon: Icons.home,
+                      isSelected: _selectedIndex == 0,
+                      onTap: () => _onItemTapped(0)),
+                  const SizedBox(width: 40),
+                  _buildBottomNavItem(
+                      icon: Icons.bar_chart,
+                      isSelected: _selectedIndex == 1,
+                      onTap: () => _onItemTapped(1)),
+                ],
+              ),
+            ),
     );
   }
 
@@ -395,14 +396,14 @@ class _MainScreenState extends State<MainScreen> {
 
   AppBar _buildDefaultAppBar(Account? activeAccount) {
     final String toggleTypeTitle =
-    _selectedTransactionType == TransactionType.expense
-        ? 'View Income'
-        : 'View Expense';
+        _selectedTransactionType == TransactionType.expense
+            ? 'View Income'
+            : 'View Expense';
 
     final IconData toggleTypeIcon =
-    _selectedTransactionType == TransactionType.expense
-        ? Icons.show_chart
-        : Icons.score;
+        _selectedTransactionType == TransactionType.expense
+            ? Icons.show_chart
+            : Icons.score;
 
     final iconColor = Theme.of(context).appBarTheme.iconTheme?.color;
 
@@ -504,8 +505,8 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildBottomNavItem(
       {required IconData icon,
-        required bool isSelected,
-        required VoidCallback onTap}) {
+      required bool isSelected,
+      required VoidCallback onTap}) {
     return SizedBox(
       width: 48,
       height: 48,
@@ -524,20 +525,22 @@ class _MainScreenState extends State<MainScreen> {
   Drawer _buildDrawer(List<Account> accounts, Account? activeAccount) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
+    final authViewModel = context.read<AuthViewModel>(); // Get AuthViewModel
 
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          const UserAccountsDrawerHeader(
-            accountName: Text("Xpense"),
-            accountEmail: Text("Track your expenses"),
-            currentAccountPicture: CircleAvatar(
+          UserAccountsDrawerHeader(
+            accountName: Text(
+                authViewModel.user?.username ?? "Xpense"), // Show username
+            accountEmail: const Text("Track your expenses"),
+            currentAccountPicture: const CircleAvatar(
               backgroundColor: Colors.white,
               child:
-              Icon(Icons.monetization_on, color: Colors.orange, size: 40),
+                  Icon(Icons.monetization_on, color: Colors.orange, size: 40),
             ),
-            decoration: BoxDecoration(color: Colors.orange),
+            decoration: const BoxDecoration(color: Colors.orange),
           ),
           _buildDrawerSectionTitle("Manage accounts"),
           ListTile(
@@ -548,16 +551,16 @@ class _MainScreenState extends State<MainScreen> {
           const Divider(),
           _buildDrawerSectionTitle("Accounts"),
           ...accounts.map((account) => ListTile(
-            leading: CircleAvatar(
-              backgroundColor: account.color,
-              radius: 16,
-            ),
-            title: Text(account.name),
-            subtitle: Text(currencyFormatter.format(account.balance)),
-            selected: account == activeAccount,
-            selectedTileColor: Colors.orange.withOpacity(0.1),
-            onTap: () => _changeActiveAccount(account),
-          )),
+                leading: CircleAvatar(
+                  backgroundColor: account.color,
+                  radius: 16,
+                ),
+                title: Text(account.name),
+                subtitle: Text(currencyFormatter.format(account.balance)),
+                selected: account == activeAccount,
+                selectedTileColor: Colors.orange.withOpacity(0.1),
+                onTap: () => _changeActiveAccount(account),
+              )),
           const Divider(),
           _buildDrawerSectionTitle("Settings"),
           SwitchListTile(
@@ -571,6 +574,14 @@ class _MainScreenState extends State<MainScreen> {
                   ? Icons.dark_mode_outlined
                   : Icons.light_mode_outlined,
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Logout'),
+            onTap: () {
+              Navigator.of(context).pop(); // Close drawer
+              context.read<AuthViewModel>().logout();
+            },
           ),
         ],
       ),
@@ -623,7 +634,7 @@ class _MainScreenState extends State<MainScreen> {
               style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   )),
