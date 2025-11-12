@@ -1,5 +1,3 @@
-// lib/services/sqlite_service.dart
-
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart' hide Transaction;
 import '../models/account_model.dart';
@@ -26,9 +24,9 @@ class SqliteService {
 
     return await openDatabase(
       path,
-      version: 2, // <-- CHANGED FROM 1 TO 2
+      version: 3, // <-- CHANGED FROM 2 TO 3
       onCreate: _createDB,
-      onUpgrade: _onUpgrade, // <-- ADDED THIS LINE
+      onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
     );
   }
@@ -37,7 +35,6 @@ class SqliteService {
     await db.execute('PRAGMA foreign_keys = ON');
   }
 
-  // _createDB runs ONLY if the database file does not exist.
   Future _createDB(Database db, int version) async {
     // User table
     await db.execute('''
@@ -48,7 +45,6 @@ class SqliteService {
       )
     ''');
 
-    // Your existing tables
     await db.execute('''
       CREATE TABLE accounts (
         id TEXT PRIMARY KEY,
@@ -56,7 +52,9 @@ class SqliteService {
         balance REAL NOT NULL,
         colorValue INTEGER NOT NULL,
         type TEXT NOT NULL,
-        budget REAL
+        budget REAL,
+        userId INTEGER,
+        FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
       )
     ''');
 
@@ -75,13 +73,9 @@ class SqliteService {
     ''');
   }
 
-  // --- ADDED THIS NEW METHOD ---
-  // _onUpgrade runs if the database file EXISTS but the version is LOWER
-  // than the one passed to openDatabase (we new-version 2, old-version 1)
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // We are upgrading from version 1 to 2
-      // We need to add the 'users' table
+      // Add users table (from version 1 to 2)
       await db.execute('''
         CREATE TABLE users (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,10 +84,13 @@ class SqliteService {
         )
       ''');
     }
-    // Add other 'if (oldVersion < 3) { ... }' blocks here for future upgrades
+    if (oldVersion < 3) {
+      await db.execute('''
+        ALTER TABLE accounts ADD COLUMN userId INTEGER 
+        REFERENCES users(id) ON DELETE CASCADE
+      ''');
+    }
   }
-
-  // --- User Methods ---
 
   String _hashPassword(String password) {
     final bytes = utf8.encode(password); // data being hashed
@@ -103,18 +100,13 @@ class SqliteService {
 
   Future<User?> registerUser(String username, String password) async {
     final db = await instance.database;
-
-    // Check if username already exists
     final existing =
         await db.query('users', where: 'username = ?', whereArgs: [username]);
-
     if (existing.isNotEmpty) {
-      return null; // Username already taken
+      return null;
     }
-
     final hashedPassword = _hashPassword(password);
     final user = User(username: username, password: hashedPassword);
-
     final id = await db.insert('users', user.toMap());
     return user.copyWith(id: id);
   }
@@ -122,13 +114,11 @@ class SqliteService {
   Future<User?> login(String username, String password) async {
     final db = await instance.database;
     final hashedPassword = _hashPassword(password);
-
     final result = await db.query(
       'users',
       where: 'username = ? AND password = ?',
       whereArgs: [username, hashedPassword],
     );
-
     if (result.isNotEmpty) {
       return User.fromMap(result.first);
     } else {
@@ -154,6 +144,7 @@ class SqliteService {
 
   Future<void> createAccount(Account account) async {
     final db = await instance.database;
+    // account.toMap() will now include the userId
     await db.insert('accounts', account.toMap());
   }
 
@@ -171,9 +162,14 @@ class SqliteService {
     }
   }
 
-  Future<List<Account>> getAllAccounts() async {
+  Future<List<Account>> getAllAccountsForUser(int userId) async {
     final db = await instance.database;
-    final result = await db.query('accounts', orderBy: 'name ASC');
+    final result = await db.query(
+      'accounts',
+      where: 'userId = ?',
+      whereArgs: [userId],
+      orderBy: 'name ASC',
+    );
     return result.map((json) => Account.fromMap(json)).toList();
   }
 
@@ -204,8 +200,6 @@ class SqliteService {
     }
     await batch.commit(noResult: true);
   }
-
-  // --- Transaction Methods ---
 
   Future<void> createTransaction(Transaction transaction) async {
     final db = await instance.database;

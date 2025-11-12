@@ -9,15 +9,22 @@ import 'utils/app_themes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Ensure database is initialized
   await SqliteService.instance.database;
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => MainViewModel()),
+        
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
+        
+        ChangeNotifierProxyProvider<AuthViewModel, MainViewModel>(
+          create: (context) => MainViewModel(
+            context.read<AuthViewModel>().user?.id,
+          ),
+          update: (context, auth, previousViewModel) =>
+              previousViewModel!..updateUser(auth.user?.id),
+        ),
       ],
       child: const MyApp(),
     ),
@@ -36,7 +43,7 @@ class MyApp extends StatelessWidget {
           theme: AppThemes.lightTheme,
           darkTheme: AppThemes.darkTheme,
           themeMode: themeProvider.themeMode,
-          home: const AuthWrapper(), // <-- This is the change
+          home: const AuthWrapper(),
           debugShowCheckedModeBanner: false,
         );
       },

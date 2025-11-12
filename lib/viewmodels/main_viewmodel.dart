@@ -6,6 +6,8 @@ import '../services/sqlite_service.dart';
 class MainViewModel extends ChangeNotifier {
   final SqliteService _dbService = SqliteService.instance;
 
+  int? _userId;
+
   bool _isLoading = true;
   bool get isLoading => _isLoading;
 
@@ -21,18 +23,46 @@ class MainViewModel extends ChangeNotifier {
     return _transactionsMap[_activeAccount!.id] ?? [];
   }
 
-  MainViewModel() {
+  MainViewModel(this._userId) {
     loadInitialData();
+  }
+
+  Future<void> updateUser(int? newUserId) async {
+    if (_userId == newUserId) return; // No change
+
+    _userId = newUserId;
+
+    _accounts = [];
+    _activeAccount = null;
+    _transactionsMap.clear();
+
+    if (_userId == null) {
+      _isLoading = false;
+      notifyListeners();
+    } else {
+      await loadInitialData();
+    }
   }
 
   Future<void> loadInitialData() async {
     _isLoading = true;
     notifyListeners();
 
-    _accounts = await _dbService.getAllAccounts();
+    if (_userId == null) {
+      _accounts = [];
+      _activeAccount = null;
+      _transactionsMap.clear();
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
+
+    _accounts = await _dbService.getAllAccountsForUser(_userId!);
     if (_accounts.isNotEmpty) {
       _activeAccount = _accounts.first;
       await _loadTransactionsForAccount(_activeAccount!.id);
+    } else {
+      _activeAccount = null; // Ensure no active account
     }
 
     _isLoading = false;
@@ -41,7 +71,7 @@ class MainViewModel extends ChangeNotifier {
 
   Future<void> _loadTransactionsForAccount(String accountId) async {
     _transactionsMap[accountId] =
-    await _dbService.getTransactionsForAccount(accountId);
+        await _dbService.getTransactionsForAccount(accountId);
   }
 
   Future<void> changeActiveAccount(Account account) async {
@@ -56,23 +86,29 @@ class MainViewModel extends ChangeNotifier {
   }
 
   Future<void> addAccount(Account account) async {
-    await _dbService.createAccount(account);
-    _accounts.add(account);
+    if (_userId == null) return;
+
+    final accountWithUser = account.copyWith(userId: _userId);
+
+    await _dbService.createAccount(accountWithUser);
+    _accounts.add(accountWithUser);
     if (_accounts.length == 1) {
-      _activeAccount = account;
-      await _loadTransactionsForAccount(account.id);
+      _activeAccount = accountWithUser;
+      await _loadTransactionsForAccount(accountWithUser.id);
     }
     notifyListeners();
   }
 
   Future<void> updateAccount(Account account) async {
-    await _dbService.updateAccount(account);
-    final index = _accounts.indexWhere((a) => a.id == account.id);
+    final accountWithUser = account.copyWith(userId: _userId);
+
+    await _dbService.updateAccount(accountWithUser);
+    final index = _accounts.indexWhere((a) => a.id == accountWithUser.id);
     if (index != -1) {
-      _accounts[index] = account;
+      _accounts[index] = accountWithUser;
     }
-    if (_activeAccount?.id == account.id) {
-      _activeAccount = account;
+    if (_activeAccount?.id == accountWithUser.id) {
+      _activeAccount = accountWithUser;
     }
     notifyListeners();
   }
@@ -91,7 +127,6 @@ class MainViewModel extends ChangeNotifier {
     }
     notifyListeners();
   }
-
 
   Future<void> addTransaction(Transaction transaction) async {
     if (_activeAccount == null) return;
