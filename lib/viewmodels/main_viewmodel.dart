@@ -28,7 +28,7 @@ class MainViewModel extends ChangeNotifier {
   }
 
   Future<void> updateUser(int? newUserId) async {
-    if (_userId == newUserId) return; // No change
+    if (_userId == newUserId) return;
 
     _userId = newUserId;
 
@@ -62,7 +62,7 @@ class MainViewModel extends ChangeNotifier {
       _activeAccount = _accounts.first;
       await _loadTransactionsForAccount(_activeAccount!.id);
     } else {
-      _activeAccount = null; // Ensure no active account
+      _activeAccount = null;
     }
 
     _isLoading = false;

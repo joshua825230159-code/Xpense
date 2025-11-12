@@ -24,7 +24,7 @@ class SqliteService {
 
     return await openDatabase(
       path,
-      version: 3, // <-- CHANGED FROM 2 TO 3
+      version: 4,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
@@ -41,10 +41,12 @@ class SqliteService {
       CREATE TABLE users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
+        password TEXT NOT NULL,
+        isPremium INTEGER NOT NULL DEFAULT 0 
       )
     ''');
 
+    // Accounts table
     await db.execute('''
       CREATE TABLE accounts (
         id TEXT PRIMARY KEY,
@@ -58,6 +60,7 @@ class SqliteService {
       )
     ''');
 
+    // Transactions table
     await db.execute('''
       CREATE TABLE transactions (
         id TEXT PRIMARY KEY,
@@ -75,12 +78,12 @@ class SqliteService {
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // Add users table (from version 1 to 2)
       await db.execute('''
         CREATE TABLE users (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           username TEXT UNIQUE NOT NULL,
-          password TEXT NOT NULL
+          password TEXT NOT NULL,
+          isPremium INTEGER NOT NULL DEFAULT 0 
         )
       ''');
     }
@@ -90,10 +93,16 @@ class SqliteService {
         REFERENCES users(id) ON DELETE CASCADE
       ''');
     }
+    if (oldVersion < 4) {
+      // Add isPremium column to existing users table
+      await db.execute('''
+        ALTER TABLE users ADD COLUMN isPremium INTEGER NOT NULL DEFAULT 0
+      ''');
+    }
   }
 
   String _hashPassword(String password) {
-    final bytes = utf8.encode(password); // data being hashed
+    final bytes = utf8.encode(password);
     final digest = sha256.convert(bytes);
     return digest.toString();
   }
@@ -105,8 +114,13 @@ class SqliteService {
     if (existing.isNotEmpty) {
       return null;
     }
+    // New users are not premium by default (isPremium defaults to 0)
     final hashedPassword = _hashPassword(password);
-    final user = User(username: username, password: hashedPassword);
+    final user = User(
+      username: username,
+      password: hashedPassword,
+      isPremium: false,
+    );
     final id = await db.insert('users', user.toMap());
     return user.copyWith(id: id);
   }
@@ -140,11 +154,18 @@ class SqliteService {
     }
   }
 
-  // --- Account Methods ---
+  Future<void> updateUserPremiumStatus(int userId, bool isPremium) async {
+    final db = await instance.database;
+    await db.update(
+      'users',
+      {'isPremium': isPremium ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
+  }
 
   Future<void> createAccount(Account account) async {
     final db = await instance.database;
-    // account.toMap() will now include the userId
     await db.insert('accounts', account.toMap());
   }
 

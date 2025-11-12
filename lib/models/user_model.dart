@@ -1,20 +1,27 @@
 class User {
   final int? id;
   final String username;
-  final String password; // This will store the hashed password
+  final String password;
+  final bool isPremium;
 
   User({
     this.id,
     required this.username,
     required this.password,
+    required this.isPremium,
   });
 
-  // Helper to create a new instance with an ID, e.g., after DB insert
-  User copyWith({int? id}) {
+  User copyWith({
+    int? id,
+    String? username,
+    String? password,
+    bool? isPremium,
+  }) {
     return User(
       id: id ?? this.id,
-      username: username,
-      password: password,
+      username: username ?? this.username,
+      password: password ?? this.password,
+      isPremium: isPremium ?? this.isPremium,
     );
   }
 
@@ -23,6 +30,7 @@ class User {
       'id': id,
       'username': username,
       'password': password,
+      'isPremium': isPremium ? 1 : 0,
     };
   }
 
@@ -31,6 +39,7 @@ class User {
       id: map['id'],
       username: map['username'],
       password: map['password'],
+      isPremium: map['isPremium'] == 1,
     );
   }
 }

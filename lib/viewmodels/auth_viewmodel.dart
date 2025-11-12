@@ -47,7 +47,7 @@ class AuthViewModel extends ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setInt(_userIdKey, user.id!);
         notifyListeners();
-        return null; // Success
+        return null;
       } else {
         return 'Invalid username or password.';
       }
@@ -60,7 +60,6 @@ class AuthViewModel extends ChangeNotifier {
     try {
       final user = await _dbService.registerUser(username, password);
       if (user != null) {
-        // Automatically log in after registration
         return await login(username, password);
       } else {
         return 'Username already exists.';
@@ -75,5 +74,17 @@ class AuthViewModel extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_userIdKey);
     notifyListeners();
+  }
+
+  Future<void> becomePremium() async {
+    if (_user == null) return;
+
+    try {
+      await _dbService.updateUserPremiumStatus(_user!.id!, true);
+      _user = await _dbService.getUserById(_user!.id!);
+      notifyListeners();
+    } catch (e) {
+      print("Error becoming premium: $e");
+    }
   }
 }
