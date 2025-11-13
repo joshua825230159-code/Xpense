@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/account_model.dart';
 import '../models/transaction_model.dart';
 import '../services/sqlite_service.dart';
@@ -36,6 +37,8 @@ class MainViewModel extends ChangeNotifier {
 
   Map<String, double> allConversionRates = {};
 
+  static const String _kLastActiveAccountKey = 'lastActiveAccountId';
+
   MainViewModel(this._userId) {
     loadInitialData();
   }
@@ -54,6 +57,8 @@ class MainViewModel extends ChangeNotifier {
     allConversionRates = {};
 
     if (_userId == null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kLastActiveAccountKey);
       _isLoading = false;
       notifyListeners();
     } else {
@@ -74,9 +79,22 @@ class MainViewModel extends ChangeNotifier {
       return;
     }
 
+    final prefs = await SharedPreferences.getInstance();
+    final String? savedAccountId = prefs.getString(_kLastActiveAccountKey);
+
     _accounts = await _dbService.getAllAccountsForUser(_userId!);
+
     if (_accounts.isNotEmpty) {
-      _activeAccount = _accounts.first;
+      Account? accountToLoad;
+      if (savedAccountId != null) {
+        accountToLoad = _accounts.firstWhere(
+              (acc) => acc.id == savedAccountId,
+          orElse: () => _accounts.first,
+        );
+      } else {
+        accountToLoad = _accounts.first;
+      }
+      _activeAccount = accountToLoad;
       await _loadTransactionsForAccount(_activeAccount!.id);
     } else {
       _activeAccount = null;
@@ -143,6 +161,10 @@ class MainViewModel extends ChangeNotifier {
       await _loadTransactionsForAccount(account.id);
       _isLoading = false;
     }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kLastActiveAccountKey, account.id);
+
     notifyListeners();
   }
 
