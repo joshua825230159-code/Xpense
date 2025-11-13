@@ -13,7 +13,6 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
 
     final String? cachedTimestampStr = prefs.getString(_ratesTimestampKey);
-    // renew every 24 hours
     if (cachedTimestampStr != null) {
       final DateTime cachedTimestamp = DateTime.parse(cachedTimestampStr);
       final bool isCacheFresh = DateTime.now().difference(cachedTimestamp).inHours < 24;

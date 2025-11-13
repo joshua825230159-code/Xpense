@@ -1,12 +1,10 @@
-// lib/widgets/currency_converter_dialog.dart
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:xpense/services/api_service.dart';
 
 class CurrencyConverterDialog extends StatefulWidget {
   final double accountBalance;
-  final String baseCurrency; // e.g., "IDR"
+  final String baseCurrency;
 
   const CurrencyConverterDialog({
     super.key,
@@ -23,12 +21,10 @@ class _CurrencyConverterDialogState extends State<CurrencyConverterDialog> {
   late TextEditingController _amountController;
   late String _fromCurrency;
 
-  // Daftar mata uang yang ingin Anda gunakan
   final List<String> _allCurrencies = [
     'IDR', 'USD', 'EUR', 'JPY', 'GBP', 'AUD', 'SGD', 'MYR'
   ];
 
-  // Daftar mata uang target (tidak termasuk 'from')
   List<String> get _targetCurrencies =>
       _allCurrencies.where((c) => c != _fromCurrency).toList();
 
@@ -39,13 +35,11 @@ class _CurrencyConverterDialogState extends State<CurrencyConverterDialog> {
   @override
   void initState() {
     super.initState();
-    // Set nilai awal dari properti widget
     _amountController = TextEditingController(
       text: widget.accountBalance.toStringAsFixed(0),
     );
     _fromCurrency = widget.baseCurrency;
 
-    // Langsung panggil API saat dialog dibuka
     _fetchRates();
   }
 
@@ -95,7 +89,6 @@ class _CurrencyConverterDialogState extends State<CurrencyConverterDialog> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Dropdown untuk mata uang 'FROM'
                 DropdownButton<String>(
                   value: _fromCurrency,
                   items: _allCurrencies.map((String value) {
@@ -113,7 +106,6 @@ class _CurrencyConverterDialogState extends State<CurrencyConverterDialog> {
                   },
                 ),
                 const SizedBox(width: 10),
-                // Text field untuk jumlah
                 Expanded(
                   child: TextField(
                     controller: _amountController,
@@ -136,7 +128,7 @@ class _CurrencyConverterDialogState extends State<CurrencyConverterDialog> {
               ),
             ),
             const Divider(height: 24),
-            _buildResults(), // Widget untuk menampilkan hasil
+            _buildResults(),
           ],
         ),
       ),
@@ -149,7 +141,6 @@ class _CurrencyConverterDialogState extends State<CurrencyConverterDialog> {
     );
   }
 
-  // Widget helper untuk menampilkan hasil
   Widget _buildResults() {
     if (_isLoading) {
       return const Center(
@@ -170,7 +161,6 @@ class _CurrencyConverterDialogState extends State<CurrencyConverterDialog> {
       );
     }
 
-    // Tampilkan jika _conversionRates sudah ada (setelah fetch sukses)
     if (_conversionRates != null) {
       final double amount = double.tryParse(_amountController.text) ?? 0.0;
       final String formattedBaseAmount = NumberFormat.currency(
@@ -184,10 +174,9 @@ class _CurrencyConverterDialogState extends State<CurrencyConverterDialog> {
         final double rate = entry.value;
         final double convertedAmount = amount * rate;
 
-        // Formatter untuk mata uang asing
         final NumberFormat foreignFormatter = NumberFormat.currency(
-          locale: 'en_US', // Locale umum untuk format desimal
-          symbol: '', // Simbol akan ditambahkan manual
+          locale: 'en_US',
+          symbol: '',
           decimalDigits: 2,
         );
 
@@ -222,7 +211,6 @@ class _CurrencyConverterDialogState extends State<CurrencyConverterDialog> {
       );
     }
 
-    // State awal sebelum menekan 'Convert'
     return const Center(child: Text('Press Convert to see rates.'));
   }
 }
