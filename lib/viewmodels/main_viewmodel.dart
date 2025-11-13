@@ -240,7 +240,7 @@ class MainViewModel extends ChangeNotifier {
     final ids = accountsToDelete.map((a) => a.id).toList();
     await _dbService.deleteAccounts(ids);
 
-    _accounts.removeWhere((a) => accountsToDelete.contains(a));
+    _accounts.removeWhere((a) => ids.contains(a.id));
     _transactionsMap.removeWhere((key, value) => ids.contains(key));
 
     if (_activeAccount != null && ids.contains(_activeAccount!.id)) {
@@ -317,8 +317,8 @@ class MainViewModel extends ChangeNotifier {
     _activeAccount!.balance += balanceChange;
     await _dbService.updateAccount(_activeAccount!);
 
-    _transactionsMap[_activeAccount!.id]
-        ?.removeWhere((t) => transactionsToDelete.contains(t));
+    _transactionsMap[_activeAccount!.id]?.removeWhere((t) => ids.contains(t.id));
+
     notifyListeners();
     calculateTotalBalance('IDR');
   }
