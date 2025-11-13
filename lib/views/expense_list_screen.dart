@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/account_model.dart';
 import '../models/transaction_model.dart';
+import '../services/currency_formatter_service.dart';
 
 class ExpenseListScreen extends StatelessWidget {
   final Account? activeAccount;
@@ -27,8 +28,6 @@ class ExpenseListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormatter =
-        NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final bool isSelectionMode = selectedTransactions.isNotEmpty;
 
     return SafeArea(
@@ -40,12 +39,11 @@ class ExpenseListScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (!isSearching && !isSelectionMode) ...[
-                _buildBalanceCard(
-                    currencyFormatter, activeAccount, transactions),
+                _buildBalanceCard(activeAccount, transactions),
                 const SizedBox(height: 20),
               ],
               _buildRecentTransactions(
-                  transactions, currencyFormatter, isSearching, searchQuery, context),
+                  transactions, isSearching, searchQuery, context),
             ],
           ),
         ),
@@ -55,7 +53,6 @@ class ExpenseListScreen extends StatelessWidget {
 
   Widget _buildRecentTransactions(
       List<Transaction> transactions,
-      NumberFormat currencyFormatter,
       bool isSearching,
       String searchQuery,
       BuildContext context) {
@@ -77,43 +74,50 @@ class ExpenseListScreen extends StatelessWidget {
         if (showTitle) const SizedBox(height: 10),
         transactions.isEmpty
             ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 40.0),
-                  child: Text(
-                    searchQuery.isNotEmpty
-                        ? 'No transactions found.'
-                        : "No transactions for this account yet.",
-                    style: const TextStyle(color: Colors.grey, fontSize: 16),
-                  ),
-                ),
-              )
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40.0),
+            child: Text(
+              searchQuery.isNotEmpty
+                  ? 'No transactions found.'
+                  : "No transactions for this account yet.",
+              style: const TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+          ),
+        )
             : ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: transactions.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 5),
-                itemBuilder: (context, index) {
-                  final transaction = transactions[index];
-                  final isSelected = selectedTransactions.contains(transaction);
-                  return _buildTransactionItem(
-                      context, transaction, currencyFormatter, isSelected);
-                },
-              ),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: transactions.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 5),
+          itemBuilder: (context, index) {
+            final transaction = transactions[index];
+            final isSelected = selectedTransactions.contains(transaction);
+            return _buildTransactionItem(
+              context,
+              transaction,
+              activeAccount!.currencyCode,
+              isSelected,
+            );
+          },
+        ),
       ],
     );
   }
 
-  Widget _buildBalanceCard(NumberFormat currencyFormatter,
+  Widget _buildBalanceCard(
       Account? activeAccount, List<Transaction> currentTransactions) {
-    double balance = activeAccount?.balance ?? 0;
-    double? budget = activeAccount?.budget;
+    if (activeAccount == null) return const SizedBox.shrink();
+
+    double balance = activeAccount.balance;
+    double? budget = activeAccount.budget;
+    String currencyCode = activeAccount.currencyCode;
 
     final now = DateTime.now();
     final monthlyExpense = currentTransactions
         .where((t) =>
-            t.type == TransactionType.expense &&
-            t.date.year == now.year &&
-            t.date.month == now.month)
+    t.type == TransactionType.expense &&
+        t.date.year == now.year &&
+        t.date.month == now.month)
         .fold(0.0, (sum, item) => sum + item.amount);
 
     final totalIncome = currentTransactions
@@ -166,7 +170,7 @@ class ExpenseListScreen extends StatelessWidget {
           ),
           const SizedBox(height: 0),
           Text(
-            currencyFormatter.format(balance),
+            CurrencyFormatterService.format(balance, currencyCode),
             style: const TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.bold,
@@ -178,13 +182,18 @@ class ExpenseListScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Expanded(
-                child: _buildIncomeExpenseItem(Icons.arrow_downward,
-                    "Total Income", currencyFormatter.format(totalIncome)),
+                child: _buildIncomeExpenseItem(
+                    Icons.arrow_downward,
+                    "Total Income",
+                    CurrencyFormatterService.format(totalIncome, currencyCode)),
               ),
               const SizedBox(width: 15),
               Expanded(
-                child: _buildIncomeExpenseItem(Icons.arrow_upward,
-                    "Total Expense", currencyFormatter.format(overallExpense)),
+                child: _buildIncomeExpenseItem(
+                    Icons.arrow_upward,
+                    "Total Expense",
+                    CurrencyFormatterService.format(
+                        overallExpense, currencyCode)),
               ),
             ],
           ),
@@ -209,12 +218,12 @@ class ExpenseListScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '${currencyFormatter.format(monthlyExpense)} spent',
+                  '${CurrencyFormatterService.format(monthlyExpense, currencyCode)} spent',
                   style: const TextStyle(
                       color: Colors.white, fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  'of ${currencyFormatter.format(budget)}',
+                  'of ${CurrencyFormatterService.format(budget, currencyCode)}',
                   style: const TextStyle(color: Colors.white70),
                 ),
               ],
@@ -288,12 +297,12 @@ class ExpenseListScreen extends StatelessWidget {
   }
 
   Widget _buildTransactionItem(BuildContext context, Transaction transaction,
-      NumberFormat currencyFormatter, bool isSelected) {
+      String currencyCode, bool isSelected) {
     final color =
-        transaction.type == TransactionType.income ? Colors.green : Colors.red;
+    transaction.type == TransactionType.income ? Colors.green : Colors.red;
     final amountSign = transaction.type == TransactionType.income ? '+' : '-';
     final tileColor =
-        isSelected ? Colors.blue.shade100 : Theme.of(context).cardColor;
+    isSelected ? Colors.blue.shade100 : Theme.of(context).cardColor;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
@@ -400,7 +409,7 @@ class ExpenseListScreen extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              "$amountSign ${currencyFormatter.format(transaction.amount)}",
+              "$amountSign ${CurrencyFormatterService.format(transaction.amount, currencyCode)}",
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,

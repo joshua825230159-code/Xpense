@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
+import '../services/currency_formatter_service.dart';
 
 class TransactionDetailScreen extends StatefulWidget {
   final Transaction transaction;
+  final String currencyCode;
 
-  const TransactionDetailScreen({super.key, required this.transaction});
+  const TransactionDetailScreen({
+    super.key,
+    required this.transaction,
+    required this.currencyCode,
+  });
 
   @override
   State<TransactionDetailScreen> createState() =>
@@ -99,6 +105,10 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     final activeIcons = activeCategoryMap.keys.toList();
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
+    final String currencySymbol = CurrencyFormatterService.getSymbol(
+        widget.currencyCode
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Transaction'),
@@ -127,7 +137,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                   widthFactor: 1.0,
                   heightFactor: 1.0,
                   child: Text(
-                    'Rp',
+                    currencySymbol,
                     style: TextStyle(
                       color: Theme.of(context).hintColor,
                       fontSize: 16,

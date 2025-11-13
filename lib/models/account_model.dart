@@ -1,5 +1,3 @@
-// lib/models/account_model.dart
-
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:equatable/equatable.dart';
@@ -16,6 +14,7 @@ class Account with EquatableMixin {
   double balance;
   int colorValue;
   AccountType type;
+  String currencyCode;
   double? budget;
   final String id;
   final int? userId;
@@ -27,6 +26,7 @@ class Account with EquatableMixin {
     this.balance = 0.0,
     required this.colorValue,
     required this.type,
+    this.currencyCode = 'IDR',
     this.budget,
     String? id,
     this.userId,
@@ -43,6 +43,7 @@ class Account with EquatableMixin {
     double? balance,
     int? colorValue,
     AccountType? type,
+    String? currencyCode,
     double? budget,
     String? id,
     int? userId,
@@ -52,6 +53,7 @@ class Account with EquatableMixin {
       balance: balance ?? this.balance,
       colorValue: colorValue ?? this.colorValue,
       type: type ?? this.type,
+      currencyCode: currencyCode ?? this.currencyCode,
       budget: budget ?? this.budget,
       id: id ?? this.id,
       userId: userId ?? this.userId,
@@ -65,6 +67,7 @@ class Account with EquatableMixin {
       'balance': balance,
       'colorValue': colorValue,
       'type': type.name,
+      'currencyCode': currencyCode,
       'budget': budget,
       'userId': userId,
     };
@@ -77,8 +80,9 @@ class Account with EquatableMixin {
       balance: map['balance'],
       colorValue: map['colorValue'],
       type: AccountType.values.firstWhere(
-        (e) => e.name == map['type'],
+            (e) => e.name == map['type'],
       ),
+      currencyCode: map['currencyCode'] ?? 'IDR',
       budget: map['budget'],
       userId: map['userId'],
     );

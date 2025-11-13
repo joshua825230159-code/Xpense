@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
+import '../services/currency_formatter_service.dart';
 
 class AddTransactionSheet extends StatefulWidget {
   final Function(Transaction) onAddTransaction;
   final String accountId;
+  final String accountCurrencyCode;
 
   const AddTransactionSheet({
     super.key,
     required this.onAddTransaction,
     required this.accountId,
+    required this.accountCurrencyCode,
   });
 
   @override
@@ -92,6 +95,10 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
     final activeIcons = activeCategoryMap.keys.toList();
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
+    final String currencySymbol = CurrencyFormatterService.getSymbol(
+        widget.accountCurrencyCode
+    );
+
     return Padding(
       padding: EdgeInsets.only(
         top: 20,
@@ -126,7 +133,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                     widthFactor: 1.0,
                     heightFactor: 1.0,
                     child: Text(
-                      'Rp',
+                      currencySymbol,
                       style: TextStyle(
                         color: Theme.of(context).hintColor,
                         fontSize: 18,

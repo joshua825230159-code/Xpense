@@ -89,4 +89,24 @@ class ApiService {
       throw Exception('Gagal memuat kurs: ${e.toString()}');
     }
   }
+
+  Future<Map<String, double>> getAllRates(String fromCurrency) async {
+    final String url = '$_baseUrl/latest?from=$fromCurrency';
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['rates'] != null && data['rates'] is Map) {
+          final rates = data['rates'] as Map<String, dynamic>;
+          return rates.map((key, value) => MapEntry(key, (value as num).toDouble()));
+        } else {
+          throw Exception('Format data rates tidak valid');
+        }
+      } else {
+        throw Exception('Gagal memuat kurs (Status: ${response.statusCode})');
+      }
+    } catch (e) {
+      throw Exception('Gagal memuat kurs: ${e.toString()}');
+    }
+  }
 }

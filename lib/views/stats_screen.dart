@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 import '../models/account_model.dart';
 import '../models/transaction_model.dart';
+import '../services/currency_formatter_service.dart';
 
 class StatsScreen extends StatefulWidget {
   final Account account;
@@ -342,11 +343,11 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   Widget _buildExpensesList(bool isDarkMode) {
-    final currencyFormatter =
-    NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0);
     final title = widget.selectedType == TransactionType.expense
         ? 'Expenses by Category'
         : 'Income by Category';
+
+    final currencyCode = widget.account.currencyCode;
 
     return Container(
       padding: const EdgeInsets.all(24.0),
@@ -376,9 +377,7 @@ class _StatsScreenState extends State<StatsScreen> {
               Text('Total for ${widget.selectedPeriod}',
                   style: TextStyle(color: Colors.grey.shade600)),
               Text(
-                NumberFormat.currency(
-                    locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0)
-                    .format(_totalForActiveType),
+                CurrencyFormatterService.format(_totalForActiveType, currencyCode),
                 style: const TextStyle(
                     fontWeight: FontWeight.bold, fontSize: 16),
               ),
@@ -420,7 +419,7 @@ class _StatsScreenState extends State<StatsScreen> {
                               ),
                             ),
                             Text(
-                              currencyFormatter.format(entry.value),
+                              CurrencyFormatterService.format(entry.value, currencyCode),
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,

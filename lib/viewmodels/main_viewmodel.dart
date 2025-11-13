@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import '../models/account_model.dart';
 import '../models/transaction_model.dart';
 import '../services/sqlite_service.dart';
+import '../services/api_service.dart';
 
 class MainViewModel extends ChangeNotifier {
   final SqliteService _dbService = SqliteService.instance;
+  final ApiService _apiService = ApiService();
 
   int? _userId;
 
@@ -23,6 +25,17 @@ class MainViewModel extends ChangeNotifier {
     return _transactionsMap[_activeAccount!.id] ?? [];
   }
 
+  double? _totalBalanceInBaseCurrency;
+  double? get totalBalanceInBaseCurrency => _totalBalanceInBaseCurrency;
+
+  bool _isCalculatingTotal = false;
+  bool get isCalculatingTotal => _isCalculatingTotal;
+
+  String _calculationError = '';
+  String get calculationError => _calculationError;
+
+  Map<String, double> allConversionRates = {};
+
   MainViewModel(this._userId) {
     loadInitialData();
   }
@@ -35,6 +48,10 @@ class MainViewModel extends ChangeNotifier {
     _accounts = [];
     _activeAccount = null;
     _transactionsMap.clear();
+    _totalBalanceInBaseCurrency = null;
+    _isCalculatingTotal = false;
+    _calculationError = '';
+    allConversionRates = {};
 
     if (_userId == null) {
       _isLoading = false;
@@ -67,11 +84,55 @@ class MainViewModel extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+
+    if (_accounts.isNotEmpty) {
+      calculateTotalBalance('IDR');
+    }
   }
 
   Future<void> _loadTransactionsForAccount(String accountId) async {
     _transactionsMap[accountId] =
-        await _dbService.getTransactionsForAccount(accountId);
+    await _dbService.getTransactionsForAccount(accountId);
+  }
+
+  Future<void> calculateTotalBalance(String baseCurrency) async {
+    if (_accounts.isEmpty) return;
+
+    _isCalculatingTotal = true;
+    _totalBalanceInBaseCurrency = null;
+    _calculationError = '';
+    notifyListeners();
+
+    try {
+      final rates = await _apiService.getAllRates(baseCurrency);
+
+      allConversionRates = rates;
+
+      double total = 0.0;
+
+      for (final account in _accounts) {
+        if (account.currencyCode == baseCurrency) {
+          total += account.balance;
+        } else {
+          final rate = rates[account.currencyCode];
+          if (rate != null) {
+            total += account.balance / rate;
+          } else {
+            _calculationError = 'No rate for ${account.currencyCode}';
+            print('Warning: No rate found for ${account.currencyCode}');
+          }
+        }
+      }
+
+      _totalBalanceInBaseCurrency = total;
+
+    } catch (e) {
+      _calculationError = 'Failed to fetch rates';
+      print('Error calculating total balance: $e');
+    }
+
+    _isCalculatingTotal = false;
+    notifyListeners();
   }
 
   Future<void> changeActiveAccount(Account account) async {
@@ -97,6 +158,7 @@ class MainViewModel extends ChangeNotifier {
       await _loadTransactionsForAccount(accountWithUser.id);
     }
     notifyListeners();
+    calculateTotalBalance('IDR');
   }
 
   Future<void> updateAccount(Account account) async {
@@ -111,6 +173,45 @@ class MainViewModel extends ChangeNotifier {
       _activeAccount = accountWithUser;
     }
     notifyListeners();
+    calculateTotalBalance('IDR');
+  }
+
+  Future<void> convertAndUpdateAccount(Account updatedAccount, String oldCurrency) async {
+    final newCurrency = updatedAccount.currencyCode;
+
+    if (oldCurrency == newCurrency) {
+      return updateAccount(updatedAccount);
+    }
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final rates = await _apiService.getRatesForBaseCurrency(oldCurrency, [newCurrency]);
+      final rate = rates[newCurrency];
+
+      if (rate == null) {
+        throw Exception('Could not find rate for $newCurrency');
+      }
+
+      final List<Transaction> transactionsToUpdate =
+      List.from(_transactionsMap[updatedAccount.id] ?? []);
+
+      for (final tx in transactionsToUpdate) {
+        tx.amount = tx.amount * rate;
+      }
+
+      await _dbService.batchUpdateTransactions(transactionsToUpdate);
+      _transactionsMap[updatedAccount.id] = transactionsToUpdate;
+
+      await updateAccount(updatedAccount);
+
+    } catch (e) {
+      print('Error during account conversion: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> deleteAccounts(Set<Account> accountsToDelete) async {
@@ -126,6 +227,7 @@ class MainViewModel extends ChangeNotifier {
       }
     }
     notifyListeners();
+    calculateTotalBalance('IDR');
   }
 
   Future<void> addTransaction(Transaction transaction) async {
@@ -142,6 +244,7 @@ class MainViewModel extends ChangeNotifier {
 
     _transactionsMap[_activeAccount!.id]?.insert(0, transaction);
     notifyListeners();
+    calculateTotalBalance('IDR');
   }
 
   Future<void> updateTransaction(
@@ -170,6 +273,7 @@ class MainViewModel extends ChangeNotifier {
       }
     }
     notifyListeners();
+    calculateTotalBalance('IDR');
   }
 
   Future<void> deleteTransactions(Set<Transaction> transactionsToDelete) async {
@@ -193,5 +297,6 @@ class MainViewModel extends ChangeNotifier {
     _transactionsMap[_activeAccount!.id]
         ?.removeWhere((t) => transactionsToDelete.contains(t));
     notifyListeners();
+    calculateTotalBalance('IDR');
   }
 }
