@@ -72,20 +72,36 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
   }
 
   void _navigateAndAddAccount() async {
-    final newAccount = await Navigator.push(
+    final viewModel = context.read<MainViewModel>();
+    final List<int> usedColors = viewModel.accounts.map((a) => a.colorValue).toList();
+
+    final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const AddAccountScreen()),
+      MaterialPageRoute(
+          builder: (context) => AddAccountScreen(
+            usedColorValues: usedColors,
+          )
+      ),
     );
-    if (newAccount != null && newAccount is Account) {
-      context.read<MainViewModel>().addAccount(newAccount);
+    if (result != null && result is Account) {
+      context.read<MainViewModel>().addAccount(result);
     }
   }
 
   void _editAccount(Account account) async {
+    final viewModel = context.read<MainViewModel>();
+    final List<int> usedColors = viewModel.accounts
+        .where((a) => a.id != account.id)
+        .map((a) => a.colorValue)
+        .toList();
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddAccountScreen(account: account),
+        builder: (context) => AddAccountScreen(
+          account: account,
+          usedColorValues: usedColors,
+        ),
       ),
     );
 

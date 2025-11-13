@@ -194,8 +194,8 @@ class MainViewModel extends ChangeNotifier {
         throw Exception('Could not find rate for $newCurrency');
       }
 
-      final List<Transaction> transactionsToUpdate =
-      List.from(_transactionsMap[updatedAccount.id] ?? []);
+      List<Transaction> transactionsToUpdate =
+      await _dbService.getTransactionsForAccount(updatedAccount.id);
 
       for (final tx in transactionsToUpdate) {
         tx.amount = tx.amount * rate;
@@ -219,10 +219,11 @@ class MainViewModel extends ChangeNotifier {
     await _dbService.deleteAccounts(ids);
 
     _accounts.removeWhere((a) => accountsToDelete.contains(a));
+    _transactionsMap.removeWhere((key, value) => ids.contains(key));
 
     if (_activeAccount != null && ids.contains(_activeAccount!.id)) {
       _activeAccount = _accounts.isNotEmpty ? _accounts.first : null;
-      if (_activeAccount != null) {
+      if (_activeAccount != null && !_transactionsMap.containsKey(_activeAccount!.id)) {
         await _loadTransactionsForAccount(_activeAccount!.id);
       }
     }

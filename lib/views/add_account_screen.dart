@@ -6,10 +6,12 @@ import '../viewmodels/main_viewmodel.dart';
 
 class AddAccountScreen extends StatefulWidget {
   final Account? account;
+  final List<int>? usedColorValues;
 
   const AddAccountScreen({
     super.key,
     this.account,
+    this.usedColorValues,
   });
 
   @override
@@ -31,11 +33,25 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   String _selectedCurrency = 'IDR';
 
   AccountType _selectedType = AccountType.cash;
-  Color _selectedColor = Colors.teal;
+
   final List<Color> _availableColors = [
     Colors.teal, Colors.blue, Colors.red, Colors.green,
     Colors.purple, Colors.orange, Colors.pink, Colors.amber,
   ];
+
+  late Color _selectedColor;
+
+  Color _findNextAvailableColor() {
+    final usedValues = widget.usedColorValues ?? [];
+
+    for (final color in _availableColors) {
+      if (!usedValues.contains(color.value)) {
+        return color;
+      }
+    }
+
+    return _availableColors.first;
+  }
 
   @override
   void initState() {
@@ -51,6 +67,8 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
           widget.account!.balance,
           _selectedCurrency
       );
+    } else {
+      _selectedColor = _findNextAvailableColor();
     }
   }
 

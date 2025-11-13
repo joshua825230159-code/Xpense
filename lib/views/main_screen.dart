@@ -200,12 +200,19 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _navigateToAddAccount() async {
-    final newAccount = await Navigator.push<Account>(
+    final viewModel = context.read<MainViewModel>();
+    final List<int> usedColors = viewModel.accounts.map((a) => a.colorValue).toList();
+
+    final newAccount = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const AddAccountScreen()),
+      MaterialPageRoute(
+          builder: (context) => AddAccountScreen(
+            usedColorValues: usedColors,
+          )
+      ),
     );
 
-    if (newAccount != null) {
+    if (newAccount != null && newAccount is Account) {
       context.read<MainViewModel>().addAccount(newAccount);
     }
   }
