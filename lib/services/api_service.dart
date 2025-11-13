@@ -59,4 +59,35 @@ class ApiService {
       throw Exception('Failed to load exchange rates: ${e.toString()}');
     }
   }
+
+  Future<Map<String, double>> getRatesForBaseCurrency(
+      String fromCurrency, List<String> toCurrencies) async {
+
+    if (toCurrencies.isEmpty) {
+      return {};
+    }
+
+    final String toList = toCurrencies.join(',');
+    final String url = '$_baseUrl/latest?from=$fromCurrency&to=$toList';
+
+    try {
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['rates'] != null && data['rates'] is Map) {
+          final rates = data['rates'] as Map<String, dynamic>;
+
+          return rates.map((key, value) => MapEntry(key, (value as num).toDouble()));
+        } else {
+          throw Exception('Format data rates tidak valid');
+        }
+      } else {
+        throw Exception('Gagal memuat kurs (Status: ${response.statusCode})');
+      }
+    } catch (e) {
+      throw Exception('Gagal memuat kurs: ${e.toString()}');
+    }
+  }
 }

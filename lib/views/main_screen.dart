@@ -14,6 +14,7 @@ import 'stats_screen.dart';
 import 'transaction_detail_screen.dart';
 import '../services/export_service.dart';
 import '../services/api_service.dart';
+import '../widgets/currency_converter_dialog.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -90,97 +91,114 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  void _showExchangeRatesDialog() async {
+  // void _showExchangeRatesDialog() async {
+  //   Navigator.of(context).pop();
+  //
+  //   showDialog(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder: (context) => const Dialog(
+  //       child: Padding(
+  //         padding: EdgeInsets.all(20.0),
+  //         child: Row(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             CircularProgressIndicator(),
+  //             SizedBox(width: 20),
+  //             Text('Fetching rates...'),
+  //           ],
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  //
+  //   try {
+  //     final rates = await _apiService.getExchangeRates();
+  //
+  //     Navigator.of(context).pop();
+  //
+  //     final List<Widget> rateWidgets = rates.entries.map((entry) {
+  //       String formattedRate = NumberFormat.currency(
+  //         locale: 'id_ID',
+  //         symbol: 'IDR ',
+  //         decimalDigits: 2,
+  //       ).format(entry.value);
+  //
+  //       return Padding(
+  //         padding: const EdgeInsets.symmetric(vertical: 8.0),
+  //         child: Row(
+  //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //           children: [
+  //             Text(
+  //               '1 ${entry.key}',
+  //               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  //             ),
+  //             Text(
+  //               formattedRate,
+  //               style: const TextStyle(fontSize: 16),
+  //             ),
+  //           ],
+  //         ),
+  //       );
+  //     }).toList();
+  //
+  //     showDialog(
+  //       context: context,
+  //       builder: (context) => AlertDialog(
+  //         title: const Text('Live Exchange Rates'),
+  //         content: SingleChildScrollView(
+  //           child: Column(
+  //             mainAxisSize: MainAxisSize.min,
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               const Text('Rates against Indonesian Rupiah (IDR):'),
+  //               const Divider(height: 20),
+  //               ...rateWidgets,
+  //             ],
+  //           ),
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () => Navigator.of(context).pop(),
+  //             child: const Text('Close'),
+  //           ),
+  //         ],
+  //       ),
+  //     );
+  //   } catch (e) {
+  //     Navigator.of(context).pop();
+  //
+  //     showDialog(
+  //       context: context,
+  //       builder: (context) => AlertDialog(
+  //         title: const Text('Error'),
+  //         content: Text('Could not fetch exchange rates.\nPlease check your internet connection.\n\n${e.toString()}'),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () => Navigator.of(context).pop(),
+  //             child: const Text('Close'),
+  //           ),
+  //         ],
+  //       ),
+  //     );
+  //   }
+  // }
+
+  void _showCurrencyConverter() {
     Navigator.of(context).pop();
+
+    final viewModel = context.read<MainViewModel>();
+    final double currentBalance = viewModel.activeAccount?.balance ?? 0.0;
+
+    const String baseCurrency = 'IDR';
 
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => const Dialog(
-        child: Padding(
-          padding: EdgeInsets.all(20.0),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text('Fetching rates...'),
-            ],
-          ),
-        ),
+      builder: (context) => CurrencyConverterDialog(
+        accountBalance: currentBalance,
+        baseCurrency: baseCurrency,
       ),
     );
-
-    try {
-      final rates = await _apiService.getExchangeRates();
-
-      Navigator.of(context).pop();
-
-      final List<Widget> rateWidgets = rates.entries.map((entry) {
-        String formattedRate = NumberFormat.currency(
-          locale: 'id_ID',
-          symbol: 'IDR ',
-          decimalDigits: 2,
-        ).format(entry.value);
-        
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '1 ${entry.key}',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              Text(
-                formattedRate,
-                style: const TextStyle(fontSize: 16),
-              ),
-            ],
-          ),
-        );
-      }).toList();
-
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Live Exchange Rates'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Rates against Indonesian Rupiah (IDR):'),
-                const Divider(height: 20),
-                ...rateWidgets,
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      Navigator.of(context).pop();
-
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Error'),
-          content: Text('Could not fetch exchange rates.\nPlease check your internet connection.\n\n${e.toString()}'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      );
-    }
   }
 
   void _showExportDialog() {
@@ -708,7 +726,7 @@ class _MainScreenState extends State<MainScreen> {
           ListTile(
             leading: const Icon(Icons.currency_exchange),
             title: const Text('Live Exchange Rates'),
-            onTap: _showExchangeRatesDialog,
+            onTap: _showCurrencyConverter,
           ),
           
           const Divider(),
