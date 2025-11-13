@@ -13,6 +13,7 @@ import 'manage_accounts_screen.dart';
 import 'stats_screen.dart';
 import 'transaction_detail_screen.dart';
 import '../services/export_service.dart';
+import '../services/api_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -39,6 +40,7 @@ class _MainScreenState extends State<MainScreen> {
   final Set<Transaction> _selectedTransactions = {};
 
   final ExportService _exportService = ExportService();
+  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
@@ -88,6 +90,99 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  void _showExchangeRatesDialog() async {
+    Navigator.of(context).pop();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Dialog(
+        child: Padding(
+          padding: EdgeInsets.all(20.0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text('Fetching rates...'),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final rates = await _apiService.getExchangeRates();
+
+      Navigator.of(context).pop();
+
+      final List<Widget> rateWidgets = rates.entries.map((entry) {
+        String formattedRate = NumberFormat.currency(
+          locale: 'id_ID',
+          symbol: 'IDR ',
+          decimalDigits: 2,
+        ).format(entry.value);
+        
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '1 ${entry.key}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                formattedRate,
+                style: const TextStyle(fontSize: 16),
+              ),
+            ],
+          ),
+        );
+      }).toList();
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Live Exchange Rates'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Rates against Indonesian Rupiah (IDR):'),
+                const Divider(height: 20),
+                ...rateWidgets,
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      Navigator.of(context).pop();
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Error'),
+          content: Text('Could not fetch exchange rates.\nPlease check your internet connection.\n\n${e.toString()}'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   void _showExportDialog() {
     final auth = context.read<AuthViewModel>();
     if (!(auth.user?.isPremium ?? false)) {
@@ -103,8 +198,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                // Open the drawer
+                Navigator.of(context).pop();
                 _scaffoldKey.currentState?.openDrawer(); 
               },
               child: const Text('Upgrade'),
@@ -462,7 +556,7 @@ class _MainScreenState extends State<MainScreen> {
               } else if (value == 'sort') {
                 _showSortDialog();
               } else if (value == 'export') {
-                _showExportDialog(); // The check is inside this method
+                _showExportDialog();
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -564,9 +658,9 @@ class _MainScreenState extends State<MainScreen> {
         padding: EdgeInsets.zero,
         children: [
           UserAccountsDrawerHeader(
-            accountName: Text(
-                authViewModel.user?.username ?? "Xpense"),
-            accountEmail: Text(isPremium ? "Premium Member" : "Track your expenses"),
+            accountName: Text(authViewModel.user?.username ?? "Xpense"),
+            accountEmail:
+                Text(isPremium ? "Premium Member" : "Track your expenses"),
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
               child: Icon(
@@ -597,7 +691,7 @@ class _MainScreenState extends State<MainScreen> {
                 onTap: () => _changeActiveAccount(account),
               )),
           const Divider(),
-          _buildDrawerSectionTitle("Settings"),
+          _buildDrawerSectionTitle("Settings & Tools"),
           SwitchListTile(
             title: const Text('Dark Mode'),
             value: isDarkMode,
@@ -611,6 +705,15 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
 
+          ListTile(
+            leading: const Icon(Icons.currency_exchange),
+            title: const Text('Live Exchange Rates'),
+            onTap: _showExchangeRatesDialog,
+          ),
+          
+          const Divider(),
+          _buildDrawerSectionTitle("Membership"),
+
           if (isPremium)
             const ListTile(
               leading: Icon(Icons.star, color: Colors.orange),
@@ -623,12 +726,12 @@ class _MainScreenState extends State<MainScreen> {
               title: const Text('Become Premium'),
               subtitle: const Text('Unlock data export and more!'),
               onTap: () async {
-                // Simulate premium upgrade
                 await context.read<AuthViewModel>().becomePremium();
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Congratulations, you are now a Premium Member!'),
+                    content:
+                        Text('Congratulations, you are now a Premium Member!'),
                     backgroundColor: Colors.green,
                   ),
                 );
