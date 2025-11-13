@@ -185,19 +185,26 @@ class _MainScreenState extends State<MainScreen> {
   // }
 
   void _showCurrencyConverter() {
+    // Tutup drawer terlebih dahulu
     Navigator.of(context).pop();
 
     final viewModel = context.read<MainViewModel>();
     final double currentBalance = viewModel.activeAccount?.balance ?? 0.0;
-
     const String baseCurrency = 'IDR';
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => CurrencyConverterDialog(
-        accountBalance: currentBalance,
-        baseCurrency: baseCurrency,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      backgroundColor: Theme.of(context).cardColor,
+      builder: (context) {
+        return CurrencyConverterSheet(
+          accountBalance: currentBalance,
+          baseCurrency: baseCurrency,
+        );
+      },
     );
   }
 

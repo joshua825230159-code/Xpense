@@ -2,21 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:xpense/services/api_service.dart';
 
-class CurrencyConverterDialog extends StatefulWidget {
+class CurrencyConverterSheet extends StatefulWidget {
   final double accountBalance;
   final String baseCurrency;
 
-  const CurrencyConverterDialog({
+  const CurrencyConverterSheet({
     super.key,
     required this.accountBalance,
     this.baseCurrency = 'IDR',
   });
 
   @override
-  State<CurrencyConverterDialog> createState() => _CurrencyConverterDialogState();
+  State<CurrencyConverterSheet> createState() => _CurrencyConverterSheetState();
 }
 
-class _CurrencyConverterDialogState extends State<CurrencyConverterDialog> {
+class _CurrencyConverterSheetState extends State<CurrencyConverterSheet> {
   final ApiService _apiService = ApiService();
   late TextEditingController _amountController;
   late String _fromCurrency;
@@ -32,13 +32,32 @@ class _CurrencyConverterDialogState extends State<CurrencyConverterDialog> {
   bool _isLoading = false;
   String? _error;
 
+  final Map<String, (String, int)> _currencyFormatInfo = {
+    'IDR': ('Rp ', 0),
+    'USD': ('\$', 2),
+    'EUR': ('€', 2),
+    'JPY': ('¥', 0),
+    'GBP': ('£', 2),
+    'AUD': ('A\$', 2),
+    'SGD': ('S\$', 2),
+    'MYR': ('RM', 2),
+  };
+
   @override
   void initState() {
     super.initState();
-    _amountController = TextEditingController(
-      text: widget.accountBalance.toStringAsFixed(0),
-    );
     _fromCurrency = widget.baseCurrency;
+
+    final formatter = NumberFormat.decimalPattern(
+        _fromCurrency == 'IDR' || _fromCurrency == 'JPY' ? 'id_ID' : 'en_US');
+    _amountController = TextEditingController(
+      text: formatter.format(widget.accountBalance),
+    );
+
+    _amountController.addListener(() {
+      setState(() {
+      });
+    });
 
     _fetchRates();
   }
@@ -77,75 +96,111 @@ class _CurrencyConverterDialogState extends State<CurrencyConverterDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Convert Balance'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("Amount:"),
-            const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DropdownButton<String>(
-                  value: _fromCurrency,
-                  items: _allCurrencies.map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    if (newValue != null) {
-                      setState(() {
-                        _fromCurrency = newValue;
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: _amountController,
-                    keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 10),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _fetchRates,
-                child: Text(_isLoading ? 'Converting...' : 'Convert'),
+    final textTheme = Theme.of(context).textTheme;
+    final primaryColor = Theme.of(context).primaryColor;
+    final hintColor = Theme.of(context).hintColor;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final inputFillColor = isDarkMode
+        ? Theme.of(context).inputDecorationTheme.fillColor
+        : Theme.of(context).scaffoldBackgroundColor;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 20,
+        right: 20,
+        top: 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 5,
+              decoration: BoxDecoration(
+                color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
-            const Divider(height: 24),
-            _buildResults(),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+
+          Text(
+            'Convert Balance',
+            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+
+          Text(
+            "Amount",
+            style: textTheme.labelMedium,
+          ),
+          const SizedBox(height: 8),
+
+          TextField(
+            controller: _amountController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+            decoration: InputDecoration(
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: 12.0, right: 8.0),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _fromCurrency,
+                    items: _allCurrencies.map((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(
+                          value,
+                          style: textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _fromCurrency = newValue;
+                        });
+                        _fetchRates();
+                      }
+                    },
+                    iconEnabledColor: hintColor,
+                  ),
+                ),
+              ),
+              hintText: "Enter amount",
+              filled: true,
+              fillColor: inputFillColor,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.0),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.0),
+                borderSide: BorderSide(color: primaryColor, width: 2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          _buildResults(textTheme, primaryColor, hintColor),
+
+          const SizedBox(height: 20),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
-      ],
     );
   }
 
-  Widget _buildResults() {
+  Widget _buildResults(TextTheme textTheme, Color primaryColor, Color? hintColor) {
     if (_isLoading) {
       return const Center(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
+          padding: EdgeInsets.symmetric(vertical: 32.0),
           child: CircularProgressIndicator(),
         ),
       );
@@ -153,64 +208,97 @@ class _CurrencyConverterDialogState extends State<CurrencyConverterDialog> {
 
     if (_error != null) {
       return Center(
-        child: Text(
-          'Error: $_error',
-          style: const TextStyle(color: Colors.red),
-          textAlign: TextAlign.center,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            'Error: $_error',
+            style: const TextStyle(color: Colors.red),
+            textAlign: TextAlign.center,
+          ),
         ),
       );
     }
 
     if (_conversionRates != null) {
-      final double amount = double.tryParse(_amountController.text) ?? 0.0;
+      final String cleanAmountText =
+      _amountController.text.replaceAll('.', '');
+
+      final double amount = double.tryParse(cleanAmountText) ?? 0.0;
+
+      final (String baseSymbol, int baseDecimals) =
+          _currencyFormatInfo[_fromCurrency] ?? (_fromCurrency, 2);
+
       final String formattedBaseAmount = NumberFormat.currency(
-          symbol: '$_fromCurrency ',
-          decimalDigits: 0,
-          locale: 'id_ID'
+        symbol: baseSymbol,
+        decimalDigits: baseDecimals,
+        locale: 'id_ID',
       ).format(amount);
-
-      final List<Widget> rateWidgets = _conversionRates!.entries.map((entry) {
-        final String currencyCode = entry.key;
-        final double rate = entry.value;
-        final double convertedAmount = amount * rate;
-
-        final NumberFormat foreignFormatter = NumberFormat.currency(
-          locale: 'en_US',
-          symbol: '',
-          decimalDigits: 2,
-        );
-
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                currencyCode,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              Text(
-                foreignFormatter.format(convertedAmount),
-                style: const TextStyle(fontSize: 16),
-              ),
-            ],
-          ),
-        );
-      }).toList();
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             '$formattedBaseAmount is worth:',
-            style: Theme.of(context).textTheme.titleMedium,
+            style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
-          const Divider(height: 16),
-          ...rateWidgets,
+          const SizedBox(height: 8),
+
+          Container(
+            constraints: const BoxConstraints(maxHeight: 240),
+            child: ListView(
+              shrinkWrap: true,
+              children: _conversionRates!.entries.map((entry) {
+                final String currencyCode = entry.key;
+                final double rate = entry.value;
+
+                final double convertedAmount = amount * rate;
+
+                final (String symbol, int decimals) =
+                    _currencyFormatInfo[currencyCode] ?? (currencyCode, 2);
+
+                final NumberFormat foreignFormatter = NumberFormat.currency(
+                  locale: 'en_US',
+                  symbol: symbol,
+                  decimalDigits: decimals,
+                );
+
+                final oneUnitRate = NumberFormat.currency(
+                  locale: 'en_US',
+                  symbol: symbol,
+                  decimalDigits: 6,
+                ).format(rate);
+
+                return ListTile(
+                  dense: true,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  title: Text(
+                    foreignFormatter.format(convertedAmount),
+                    style: textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  leading: SizedBox(
+                    width: 40,
+                    child: Text(
+                      currencyCode,
+                      style: textTheme.bodyLarge?.copyWith(
+                        color: textTheme.bodyLarge?.color,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  subtitle: Text(
+                    '1 $_fromCurrency = $oneUnitRate',
+                    style: textTheme.bodySmall
+                        ?.copyWith(color: hintColor),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
         ],
       );
     }
-
-    return const Center(child: Text('Press Convert to see rates.'));
+    return const Center(child: Text('Loading conversion rates...'));
   }
 }
