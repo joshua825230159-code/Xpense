@@ -24,7 +24,7 @@ class SqliteService {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
@@ -36,7 +36,6 @@ class SqliteService {
   }
 
   Future _createDB(Database db, int version) async {
-    // User table
     await db.execute('''
       CREATE TABLE users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,7 +45,6 @@ class SqliteService {
       )
     ''');
 
-    // Accounts table
     await db.execute('''
       CREATE TABLE accounts (
         id TEXT PRIMARY KEY,
@@ -54,13 +52,13 @@ class SqliteService {
         balance REAL NOT NULL,
         colorValue INTEGER NOT NULL,
         type TEXT NOT NULL,
+        currencyCode TEXT NOT NULL DEFAULT 'IDR',
         budget REAL,
         userId INTEGER,
         FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
       )
     ''');
 
-    // Transactions table
     await db.execute('''
       CREATE TABLE transactions (
         id TEXT PRIMARY KEY,
@@ -94,9 +92,14 @@ class SqliteService {
       ''');
     }
     if (oldVersion < 4) {
-      // Add isPremium column to existing users table
       await db.execute('''
         ALTER TABLE users ADD COLUMN isPremium INTEGER NOT NULL DEFAULT 0
+      ''');
+    }
+    if (oldVersion < 5) {
+      await db.execute('''
+        ALTER TABLE accounts 
+        ADD COLUMN currencyCode TEXT NOT NULL DEFAULT 'IDR'
       ''');
     }
   }
@@ -110,11 +113,10 @@ class SqliteService {
   Future<User?> registerUser(String username, String password) async {
     final db = await instance.database;
     final existing =
-        await db.query('users', where: 'username = ?', whereArgs: [username]);
+    await db.query('users', where: 'username = ?', whereArgs: [username]);
     if (existing.isNotEmpty) {
       return null;
     }
-    // New users are not premium by default (isPremium defaults to 0)
     final hashedPassword = _hashPassword(password);
     final user = User(
       username: username,
@@ -262,6 +264,20 @@ class SqliteService {
     final batch = db.batch();
     for (final id in ids) {
       batch.delete('transactions', where: 'id = ?', whereArgs: [id]);
+    }
+    await batch.commit(noResult: true);
+  }
+
+  Future<void> batchUpdateTransactions(List<Transaction> transactions) async {
+    final db = await instance.database;
+    final batch = db.batch();
+    for (final transaction in transactions) {
+      batch.update(
+        'transactions',
+        transaction.toMap(),
+        where: 'id = ?',
+        whereArgs: [transaction.id],
+      );
     }
     await batch.commit(noResult: true);
   }

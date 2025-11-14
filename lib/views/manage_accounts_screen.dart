@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xpense/viewmodels/main_viewmodel.dart';
 import '../models/account_model.dart';
 import 'add_account_screen.dart';
+import '../services/currency_formatter_service.dart';
 
 class ManageAccountsScreen extends StatefulWidget {
   const ManageAccountsScreen({super.key});
@@ -17,8 +17,6 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
   bool _isSelectionMode = false;
   final Set<Account> _selectedAccounts = {};
 
-  final currencyFormatter =
-  NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
   void _toggleSelection(Account account) {
     setState(() {
       if (_selectedAccounts.contains(account)) {
@@ -74,25 +72,49 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
   }
 
   void _navigateAndAddAccount() async {
-    final newAccount = await Navigator.push<Account>(
+    final viewModel = context.read<MainViewModel>();
+    final List<int> usedColors = viewModel.accounts.map((a) => a.colorValue).toList();
+
+    final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const AddAccountScreen()),
+      MaterialPageRoute(
+          builder: (context) => AddAccountScreen(
+            usedColorValues: usedColors,
+          )
+      ),
     );
-    if (newAccount != null) {
-      context.read<MainViewModel>().addAccount(newAccount);
+    if (result != null && result is Account) {
+      context.read<MainViewModel>().addAccount(result);
     }
   }
 
   void _editAccount(Account account) async {
-    final updatedAccount = await Navigator.push<Account>(
+    final viewModel = context.read<MainViewModel>();
+    final List<int> usedColors = viewModel.accounts
+        .where((a) => a.id != account.id)
+        .map((a) => a.colorValue)
+        .toList();
+
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddAccountScreen(account: account),
+        builder: (context) => AddAccountScreen(
+          account: account,
+          usedColorValues: usedColors,
+        ),
       ),
     );
 
-    if (updatedAccount != null) {
-      context.read<MainViewModel>().updateAccount(updatedAccount);
+    if (result != null && result is Map) {
+      final Account updatedAccount = result['account'];
+      final String oldCurrency = result['oldCurrency'];
+
+      context.read<MainViewModel>().convertAndUpdateAccount(
+          updatedAccount,
+          oldCurrency
+      );
+    } else if (result != null && result is Account) {
+      context.read<MainViewModel>().updateAccount(result);
     }
   }
 
@@ -215,8 +237,10 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              currencyFormatter
-                                  .format(account.balance),
+                              CurrencyFormatterService.format(
+                                  account.balance,
+                                  account.currencyCode
+                              ),
                               style: TextStyle(
                                 color: Colors.grey.shade600,
                                 fontWeight: FontWeight.w500,
@@ -227,7 +251,7 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                                 padding:
                                 const EdgeInsets.only(top: 4.0),
                                 child: Text(
-                                  'Budget: ${currencyFormatter.format(account.budget)}',
+                                  'Budget: ${CurrencyFormatterService.format(account.budget!, account.currencyCode)}',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Colors.orange,

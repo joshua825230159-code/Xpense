@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:xpense/services/api_service.dart';
+import 'package:provider/provider.dart';
+import 'package:xpense/viewmodels/main_viewmodel.dart';
 
 class CurrencyConverterSheet extends StatefulWidget {
   final double accountBalance;
@@ -17,20 +18,12 @@ class CurrencyConverterSheet extends StatefulWidget {
 }
 
 class _CurrencyConverterSheetState extends State<CurrencyConverterSheet> {
-  final ApiService _apiService = ApiService();
   late TextEditingController _amountController;
   late String _fromCurrency;
 
   final List<String> _allCurrencies = [
     'IDR', 'USD', 'EUR', 'JPY', 'GBP', 'AUD', 'SGD', 'MYR'
   ];
-
-  List<String> get _targetCurrencies =>
-      _allCurrencies.where((c) => c != _fromCurrency).toList();
-
-  Map<String, double>? _conversionRates;
-  bool _isLoading = false;
-  String? _error;
 
   final Map<String, (String, int)> _currencyFormatInfo = {
     'IDR': ('Rp ', 0),
@@ -55,11 +48,8 @@ class _CurrencyConverterSheetState extends State<CurrencyConverterSheet> {
     );
 
     _amountController.addListener(() {
-      setState(() {
-      });
+      setState(() {});
     });
-
-    _fetchRates();
   }
 
   @override
@@ -68,38 +58,13 @@ class _CurrencyConverterSheetState extends State<CurrencyConverterSheet> {
     super.dispose();
   }
 
-  Future<void> _fetchRates() async {
-    if (_isLoading) return;
-    setState(() {
-      _isLoading = true;
-      _error = null;
-      _conversionRates = null;
-    });
-
-    try {
-      final rates = await _apiService.getRatesForBaseCurrency(
-        _fromCurrency,
-        _targetCurrencies,
-      );
-
-      setState(() {
-        _conversionRates = rates;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString().replaceFirst("Exception: ", "");
-        _isLoading = false;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final primaryColor = Theme.of(context).primaryColor;
     final hintColor = Theme.of(context).hintColor;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     final inputFillColor = isDarkMode
         ? Theme.of(context).inputDecorationTheme.fillColor
         : Theme.of(context).scaffoldBackgroundColor;
@@ -166,7 +131,6 @@ class _CurrencyConverterSheetState extends State<CurrencyConverterSheet> {
                         setState(() {
                           _fromCurrency = newValue;
                         });
-                        _fetchRates();
                       }
                     },
                     iconEnabledColor: hintColor,
@@ -187,9 +151,7 @@ class _CurrencyConverterSheetState extends State<CurrencyConverterSheet> {
             ),
           ),
           const SizedBox(height: 16),
-
           _buildResults(textTheme, primaryColor, hintColor),
-
           const SizedBox(height: 20),
         ],
       ),
@@ -197,7 +159,10 @@ class _CurrencyConverterSheetState extends State<CurrencyConverterSheet> {
   }
 
   Widget _buildResults(TextTheme textTheme, Color primaryColor, Color? hintColor) {
-    if (_isLoading) {
+    final viewModel = context.watch<MainViewModel>();
+    final rates = viewModel.allConversionRates;
+
+    if (rates.isEmpty && viewModel.isCalculatingTotal) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 32.0),
@@ -206,12 +171,12 @@ class _CurrencyConverterSheetState extends State<CurrencyConverterSheet> {
       );
     }
 
-    if (_error != null) {
+    if (rates.isEmpty && viewModel.calculationError.isNotEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
-            'Error: $_error',
+            'Error: ${viewModel.calculationError}',
             style: const TextStyle(color: Colors.red),
             textAlign: TextAlign.center,
           ),
@@ -219,86 +184,102 @@ class _CurrencyConverterSheetState extends State<CurrencyConverterSheet> {
       );
     }
 
-    if (_conversionRates != null) {
-      final String cleanAmountText =
-      _amountController.text.replaceAll('.', '');
+    final String cleanAmountText =
+    _amountController.text.replaceAll('.', '').replaceAll(',', '');
+    final double amount = double.tryParse(cleanAmountText) ?? 0.0;
 
-      final double amount = double.tryParse(cleanAmountText) ?? 0.0;
+    final (String baseSymbol, int baseDecimals) =
+        _currencyFormatInfo[_fromCurrency] ?? (_fromCurrency, 2);
 
-      final (String baseSymbol, int baseDecimals) =
-          _currencyFormatInfo[_fromCurrency] ?? (_fromCurrency, 2);
+    final String formattedBaseAmount = NumberFormat.currency(
+      symbol: baseSymbol,
+      decimalDigits: baseDecimals,
+      locale: 'id_ID',
+    ).format(amount);
 
-      final String formattedBaseAmount = NumberFormat.currency(
-        symbol: baseSymbol,
-        decimalDigits: baseDecimals,
-        locale: 'id_ID',
-      ).format(amount);
+    final double? fromRate = (_fromCurrency == 'IDR') ? 1.0 : rates[_fromCurrency];
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$formattedBaseAmount is worth:',
-            style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+    if (fromRate == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            'Error: Rate for $_fromCurrency not found in cache.',
+            style: const TextStyle(color: Colors.red),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
-
-          Container(
-            constraints: const BoxConstraints(maxHeight: 240),
-            child: ListView(
-              shrinkWrap: true,
-              children: _conversionRates!.entries.map((entry) {
-                final String currencyCode = entry.key;
-                final double rate = entry.value;
-
-                final double convertedAmount = amount * rate;
-
-                final (String symbol, int decimals) =
-                    _currencyFormatInfo[currencyCode] ?? (currencyCode, 2);
-
-                final NumberFormat foreignFormatter = NumberFormat.currency(
-                  locale: 'en_US',
-                  symbol: symbol,
-                  decimalDigits: decimals,
-                );
-
-                final oneUnitRate = NumberFormat.currency(
-                  locale: 'en_US',
-                  symbol: symbol,
-                  decimalDigits: 6,
-                ).format(rate);
-
-                return ListTile(
-                  dense: true,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                  title: Text(
-                    foreignFormatter.format(convertedAmount),
-                    style: textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  leading: SizedBox(
-                    width: 40,
-                    child: Text(
-                      currencyCode,
-                      style: textTheme.bodyLarge?.copyWith(
-                        color: textTheme.bodyLarge?.color,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  subtitle: Text(
-                    '1 $_fromCurrency = $oneUnitRate',
-                    style: textTheme.bodySmall
-                        ?.copyWith(color: hintColor),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
+        ),
       );
     }
-    return const Center(child: Text('Loading conversion rates...'));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$formattedBaseAmount is worth:',
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+
+        Container(
+          constraints: const BoxConstraints(maxHeight: 240),
+          child: ListView(
+            shrinkWrap: true,
+            children: _targetCurrencies.map((currencyCode) {
+              final double? toRate = (currencyCode == 'IDR') ? 1.0 : rates[currencyCode];
+              if (toRate == null) return const SizedBox.shrink();
+
+              final double crossRate = toRate / fromRate;
+              final double convertedAmount = amount * crossRate;
+
+              final (String symbol, int decimals) =
+                  _currencyFormatInfo[currencyCode] ?? (currencyCode, 2);
+
+              final NumberFormat foreignFormatter = NumberFormat.currency(
+                locale: 'en_US',
+                symbol: symbol,
+                decimalDigits: decimals,
+              );
+
+              final oneUnitRate = NumberFormat.currency(
+                locale: 'en_US',
+                symbol: symbol,
+                decimalDigits: 6,
+              ).format(crossRate);
+
+              return ListTile(
+                dense: true,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                title: Text(
+                  foreignFormatter.format(convertedAmount),
+                  style: textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                leading: SizedBox(
+                  width: 40,
+                  child: Text(
+                    currencyCode,
+                    style: textTheme.bodyLarge?.copyWith(
+                      color: textTheme.bodyLarge?.color,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                subtitle: Text(
+                  '1 $_fromCurrency = $oneUnitRate',
+                  style: textTheme.bodySmall
+                      ?.copyWith(color: hintColor),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<String> get _targetCurrencies {
+    return _allCurrencies.where((c) => c != _fromCurrency).toList();
   }
 }

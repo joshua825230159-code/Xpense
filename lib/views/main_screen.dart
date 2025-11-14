@@ -13,7 +13,7 @@ import 'manage_accounts_screen.dart';
 import 'stats_screen.dart';
 import 'transaction_detail_screen.dart';
 import '../services/export_service.dart';
-import '../services/api_service.dart';
+import '../services/currency_formatter_service.dart';
 import '../widgets/currency_converter_dialog.dart';
 
 class MainScreen extends StatefulWidget {
@@ -25,9 +25,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  final currencyFormatter =
-      NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
 
   int _selectedIndex = 0;
   String _selectedPeriod = 'Monthly';
@@ -41,7 +38,6 @@ class _MainScreenState extends State<MainScreen> {
   final Set<Transaction> _selectedTransactions = {};
 
   final ExportService _exportService = ExportService();
-  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
@@ -62,9 +58,9 @@ class _MainScreenState extends State<MainScreen> {
   void _toggleTransactionType() {
     setState(() {
       _selectedTransactionType =
-          _selectedTransactionType == TransactionType.expense
-              ? TransactionType.income
-              : TransactionType.expense;
+      _selectedTransactionType == TransactionType.expense
+          ? TransactionType.income
+          : TransactionType.expense;
     });
   }
 
@@ -91,106 +87,12 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // void _showExchangeRatesDialog() async {
-  //   Navigator.of(context).pop();
-  //
-  //   showDialog(
-  //     context: context,
-  //     barrierDismissible: false,
-  //     builder: (context) => const Dialog(
-  //       child: Padding(
-  //         padding: EdgeInsets.all(20.0),
-  //         child: Row(
-  //           mainAxisSize: MainAxisSize.min,
-  //           children: [
-  //             CircularProgressIndicator(),
-  //             SizedBox(width: 20),
-  //             Text('Fetching rates...'),
-  //           ],
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  //
-  //   try {
-  //     final rates = await _apiService.getExchangeRates();
-  //
-  //     Navigator.of(context).pop();
-  //
-  //     final List<Widget> rateWidgets = rates.entries.map((entry) {
-  //       String formattedRate = NumberFormat.currency(
-  //         locale: 'id_ID',
-  //         symbol: 'IDR ',
-  //         decimalDigits: 2,
-  //       ).format(entry.value);
-  //
-  //       return Padding(
-  //         padding: const EdgeInsets.symmetric(vertical: 8.0),
-  //         child: Row(
-  //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //           children: [
-  //             Text(
-  //               '1 ${entry.key}',
-  //               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-  //             ),
-  //             Text(
-  //               formattedRate,
-  //               style: const TextStyle(fontSize: 16),
-  //             ),
-  //           ],
-  //         ),
-  //       );
-  //     }).toList();
-  //
-  //     showDialog(
-  //       context: context,
-  //       builder: (context) => AlertDialog(
-  //         title: const Text('Live Exchange Rates'),
-  //         content: SingleChildScrollView(
-  //           child: Column(
-  //             mainAxisSize: MainAxisSize.min,
-  //             crossAxisAlignment: CrossAxisAlignment.start,
-  //             children: [
-  //               const Text('Rates against Indonesian Rupiah (IDR):'),
-  //               const Divider(height: 20),
-  //               ...rateWidgets,
-  //             ],
-  //           ),
-  //         ),
-  //         actions: [
-  //           TextButton(
-  //             onPressed: () => Navigator.of(context).pop(),
-  //             child: const Text('Close'),
-  //           ),
-  //         ],
-  //       ),
-  //     );
-  //   } catch (e) {
-  //     Navigator.of(context).pop();
-  //
-  //     showDialog(
-  //       context: context,
-  //       builder: (context) => AlertDialog(
-  //         title: const Text('Error'),
-  //         content: Text('Could not fetch exchange rates.\nPlease check your internet connection.\n\n${e.toString()}'),
-  //         actions: [
-  //           TextButton(
-  //             onPressed: () => Navigator.of(context).pop(),
-  //             child: const Text('Close'),
-  //           ),
-  //         ],
-  //       ),
-  //     );
-  //   }
-  // }
-
   void _showCurrencyConverter() {
-    // Tutup drawer terlebih dahulu
     Navigator.of(context).pop();
 
     final viewModel = context.read<MainViewModel>();
     final double currentBalance = viewModel.activeAccount?.balance ?? 0.0;
-    const String baseCurrency = 'IDR';
+    final String baseCurrency = viewModel.activeAccount?.currencyCode ?? 'IDR';
 
     showModalBottomSheet(
       context: context,
@@ -224,7 +126,7 @@ class _MainScreenState extends State<MainScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                _scaffoldKey.currentState?.openDrawer(); 
+                _scaffoldKey.currentState?.openDrawer();
               },
               child: const Text('Upgrade'),
             ),
@@ -252,7 +154,7 @@ class _MainScreenState extends State<MainScreen> {
       case 'Weekly':
         final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
         final firstDayOfWeek =
-            DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+        DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
         periodTransactions = allTransactions.where((t) {
           return t.date
               .isAfter(firstDayOfWeek.subtract(const Duration(seconds: 1)));
@@ -298,12 +200,19 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _navigateToAddAccount() async {
-    final newAccount = await Navigator.push<Account>(
+    final viewModel = context.read<MainViewModel>();
+    final List<int> usedColors = viewModel.accounts.map((a) => a.colorValue).toList();
+
+    final newAccount = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const AddAccountScreen()),
+      MaterialPageRoute(
+          builder: (context) => AddAccountScreen(
+            usedColorValues: usedColors,
+          )
+      ),
     );
 
-    if (newAccount != null) {
+    if (newAccount != null && newAccount is Account) {
       context.read<MainViewModel>().addAccount(newAccount);
     }
   }
@@ -383,11 +292,17 @@ class _MainScreenState extends State<MainScreen> {
   void _navigateToTransactionDetail(Transaction transaction) async {
     if (_isSelectionMode) return;
 
+    final activeAccount = context.read<MainViewModel>().activeAccount;
+    if (activeAccount == null) return;
+
     final updatedTransaction = await Navigator.push<Transaction>(
       context,
       MaterialPageRoute(
         builder: (context) =>
-            TransactionDetailScreen(transaction: transaction),
+            TransactionDetailScreen(
+              transaction: transaction,
+              currencyCode: activeAccount.currencyCode,
+            ),
       ),
     );
 
@@ -427,6 +342,7 @@ class _MainScreenState extends State<MainScreen> {
       builder: (ctx) {
         return AddTransactionSheet(
           accountId: activeAccount.id,
+          accountCurrencyCode: activeAccount.currencyCode,
           onAddTransaction: (transaction) {
             _addTransaction(transaction);
           },
@@ -479,47 +395,47 @@ class _MainScreenState extends State<MainScreen> {
       appBar: _isSelectionMode
           ? _buildSelectionAppBar()
           : (_isSearching
-              ? _buildSearchAppBar()
-              : _buildDefaultAppBar(activeAccount)),
+          ? _buildSearchAppBar()
+          : _buildDefaultAppBar(activeAccount)),
       drawer: _buildDrawer(accounts, activeAccount),
       body: accounts.isEmpty
           ? _buildEmptyState()
           : IndexedStack(
-              index: _selectedIndex,
-              children: pages,
-            ),
+        index: _selectedIndex,
+        children: pages,
+      ),
       floatingActionButton:
-          (accounts.isEmpty || _isSearching || _isSelectionMode)
-              ? null
-              : FloatingActionButton(
-                  onPressed: () => _showAddTransactionSheet(context),
-                  backgroundColor: Colors.orange,
-                  child:
-                      const Icon(Icons.add, color: Colors.white, size: 30),
-                  shape: const CircleBorder(),
-                ),
+      (accounts.isEmpty || _isSearching || _isSelectionMode)
+          ? null
+          : FloatingActionButton(
+        onPressed: () => _showAddTransactionSheet(context),
+        backgroundColor: Colors.orange,
+        child:
+        const Icon(Icons.add, color: Colors.white, size: 30),
+        shape: const CircleBorder(),
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: accounts.isEmpty
           ? null
           : BottomAppBar(
-              height: 60.0,
-              shape: const CircularNotchedRectangle(),
-              notchMargin: 8.0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: <Widget>[
-                  _buildBottomNavItem(
-                      icon: Icons.home,
-                      isSelected: _selectedIndex == 0,
-                      onTap: () => _onItemTapped(0)),
-                  const SizedBox(width: 40),
-                  _buildBottomNavItem(
-                      icon: Icons.bar_chart,
-                      isSelected: _selectedIndex == 1,
-                      onTap: () => _onItemTapped(1)),
-                ],
-              ),
-            ),
+        height: 60.0,
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8.0,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: <Widget>[
+            _buildBottomNavItem(
+                icon: Icons.home,
+                isSelected: _selectedIndex == 0,
+                onTap: () => _onItemTapped(0)),
+            const SizedBox(width: 40),
+            _buildBottomNavItem(
+                icon: Icons.bar_chart,
+                isSelected: _selectedIndex == 1,
+                onTap: () => _onItemTapped(1)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -541,17 +457,17 @@ class _MainScreenState extends State<MainScreen> {
 
   AppBar _buildDefaultAppBar(Account? activeAccount) {
     final String toggleTypeTitle =
-        _selectedTransactionType == TransactionType.expense
-            ? 'View Income'
-            : 'View Expense';
+    _selectedTransactionType == TransactionType.expense
+        ? 'View Income'
+        : 'View Expense';
 
     final IconData toggleTypeIcon =
-        _selectedTransactionType == TransactionType.expense
-            ? Icons.show_chart
-            : Icons.score;
+    _selectedTransactionType == TransactionType.expense
+        ? Icons.show_chart
+        : Icons.score;
 
     final iconColor = Theme.of(context).appBarTheme.iconTheme?.color;
-    
+
     final auth = context.watch<AuthViewModel>();
     final isPremium = auth.user?.isPremium ?? false;
 
@@ -654,8 +570,8 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildBottomNavItem(
       {required IconData icon,
-      required bool isSelected,
-      required VoidCallback onTap}) {
+        required bool isSelected,
+        required VoidCallback onTap}) {
     return SizedBox(
       width: 48,
       height: 48,
@@ -674,28 +590,52 @@ class _MainScreenState extends State<MainScreen> {
   Drawer _buildDrawer(List<Account> accounts, Account? activeAccount) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
-    
-    final authViewModel = context.watch<AuthViewModel>();
-    final isPremium = authViewModel.user?.isPremium ?? false;
 
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          UserAccountsDrawerHeader(
-            accountName: Text(authViewModel.user?.username ?? "Xpense"),
-            accountEmail:
-                Text(isPremium ? "Premium Member" : "Track your expenses"),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(
-                isPremium ? Icons.star : Icons.monetization_on,
-                color: Colors.orange,
-                size: 40,
-              ),
-            ),
-            decoration: const BoxDecoration(color: Colors.orange),
+          Consumer<AuthViewModel>(
+              builder: (context, authViewModel, child) {
+                final isPremium = authViewModel.user?.isPremium ?? false;
+                return UserAccountsDrawerHeader(
+                  accountName: Text(authViewModel.user?.username ?? "Xpense"),
+
+                  accountEmail: Consumer<MainViewModel>(
+                    builder: (context, viewModel, child) {
+                      if (viewModel.isCalculatingTotal) {
+                        return const Text('Calculating total...', style: TextStyle(color: Colors.white70));
+                      }
+                      if (viewModel.totalBalanceInBaseCurrency != null) {
+                        final formattedTotal = CurrencyFormatterService.format(
+                            viewModel.totalBalanceInBaseCurrency!,
+                            'IDR'
+                        );
+                        return Text(
+                            'Total Balance: $formattedTotal',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
+                        );
+                      }
+                      if (viewModel.calculationError.isNotEmpty) {
+                        return Text('Error: ${viewModel.calculationError}', style: const TextStyle(color: Colors.redAccent));
+                      }
+                      return Text(isPremium ? "Premium Member" : "Track your expenses");
+                    },
+                  ),
+
+                  currentAccountPicture: CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: Icon(
+                      isPremium ? Icons.star : Icons.monetization_on,
+                      color: Colors.orange,
+                      size: 40,
+                    ),
+                  ),
+                  decoration: const BoxDecoration(color: Colors.orange),
+                );
+              }
           ),
+
           _buildDrawerSectionTitle("Manage accounts"),
           ListTile(
             leading: const Icon(Icons.add_circle_outline),
@@ -704,17 +644,24 @@ class _MainScreenState extends State<MainScreen> {
           ),
           const Divider(),
           _buildDrawerSectionTitle("Accounts"),
+
           ...accounts.map((account) => ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: account.color,
-                  radius: 16,
-                ),
-                title: Text(account.name),
-                subtitle: Text(currencyFormatter.format(account.balance)),
-                selected: account == activeAccount,
-                selectedTileColor: Colors.orange.withOpacity(0.1),
-                onTap: () => _changeActiveAccount(account),
-              )),
+            leading: CircleAvatar(
+              backgroundColor: account.color,
+              radius: 16,
+            ),
+            title: Text(account.name),
+            subtitle: Text(
+                CurrencyFormatterService.format(
+                    account.balance,
+                    account.currencyCode
+                )
+            ),
+            selected: account == activeAccount,
+            selectedTileColor: Colors.orange.withOpacity(0.1),
+            onTap: () => _changeActiveAccount(account),
+          )),
+
           const Divider(),
           _buildDrawerSectionTitle("Settings & Tools"),
           SwitchListTile(
@@ -735,33 +682,39 @@ class _MainScreenState extends State<MainScreen> {
             title: const Text('Live Exchange Rates'),
             onTap: _showCurrencyConverter,
           ),
-          
+
           const Divider(),
           _buildDrawerSectionTitle("Membership"),
 
-          if (isPremium)
-            const ListTile(
-              leading: Icon(Icons.star, color: Colors.orange),
-              title: Text('Premium Member'),
-              subtitle: Text('You have access to all features!'),
-            )
-          else
-            ListTile(
-              leading: const Icon(Icons.star_border),
-              title: const Text('Become Premium'),
-              subtitle: const Text('Unlock data export and more!'),
-              onTap: () async {
-                await context.read<AuthViewModel>().becomePremium();
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content:
-                        Text('Congratulations, you are now a Premium Member!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              },
-            ),
+          Consumer<AuthViewModel>(
+              builder: (context, authViewModel, child) {
+                final isPremium = authViewModel.user?.isPremium ?? false;
+                if (isPremium) {
+                  return const ListTile(
+                    leading: Icon(Icons.star, color: Colors.orange),
+                    title: Text('Premium Member'),
+                    subtitle: Text('You have access to all features!'),
+                  );
+                } else {
+                  return ListTile(
+                    leading: const Icon(Icons.star_border),
+                    title: const Text('Become Premium'),
+                    subtitle: const Text('Unlock data export and more!'),
+                    onTap: () async {
+                      await authViewModel.becomePremium();
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content:
+                          Text('Congratulations, you are now a Premium Member!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    },
+                  );
+                }
+              }
+          ),
 
           ListTile(
             leading: const Icon(Icons.logout),
@@ -822,7 +775,7 @@ class _MainScreenState extends State<MainScreen> {
               style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   )),
