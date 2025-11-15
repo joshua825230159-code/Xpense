@@ -25,7 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final auth = context.read<AuthViewModel>();
     final error = await auth.login(
-      _usernameController.text,
+      _usernameController.text.trim(),
       _passwordController.text,
     );
 
@@ -91,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     prefixIcon: Icon(Icons.person),
                   ),
                   validator: (value) =>
-                      value!.isEmpty ? 'Please enter a username' : null,
+                  value!.isEmpty ? 'Please enter a username' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -103,23 +103,23 @@ class _LoginScreenState extends State<LoginScreen> {
                     prefixIcon: Icon(Icons.lock),
                   ),
                   validator: (value) =>
-                      value!.isEmpty ? 'Please enter a password' : null,
+                  value!.isEmpty ? 'Please enter a password' : null,
                 ),
                 const SizedBox(height: 24),
                 _isLoading
                     ? const CircularProgressIndicator()
                     : SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: const Text('Login',
-                              style: TextStyle(color: Colors.white)),
-                        ),
-                      ),
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _login,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text('Login',
+                        style: TextStyle(color: Colors.white)),
+                  ),
+                ),
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: () {

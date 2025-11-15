@@ -25,7 +25,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
     final auth = context.read<AuthViewModel>();
     final error = await auth.register(
-      _usernameController.text,
+      _usernameController.text.trim(),
       _passwordController.text,
     );
 
