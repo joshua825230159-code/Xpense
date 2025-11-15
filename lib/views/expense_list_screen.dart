@@ -29,78 +29,90 @@ class ExpenseListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isSelectionMode = selectedTransactions.isNotEmpty;
+    final bool showHeader = !isSearching && !isSelectionMode;
+
+    if (transactions.isEmpty) {
+      return SafeArea(
+        top: false,
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    if (showHeader) ...[
+                      _buildBalanceCard(activeAccount, transactions),
+                      const SizedBox(height: 20),
+                    ],
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 40.0),
+                        child: Text(
+                          searchQuery.isNotEmpty
+                              ? 'No transactions found.'
+                              : "No transactions for this account yet.",
+                          style: const TextStyle(color: Colors.grey, fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return SafeArea(
       top: false,
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!isSearching && !isSelectionMode) ...[
-                _buildBalanceCard(activeAccount, transactions),
-                const SizedBox(height: 20),
-              ],
-              _buildRecentTransactions(
-                  transactions, isSearching, searchQuery, context),
-            ],
+      child: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (showHeader) ...[
+                    _buildBalanceCard(activeAccount, transactions),
+                    const SizedBox(height: 20),
+                  ],
+                  if (showHeader)
+                    Text(
+                      "Recent Transactions",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                      ),
+                    ),
+                  if (showHeader) const SizedBox(height: 10),
+                ],
+              ),
+            ),
           ),
-        ),
+
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            sliver: SliverList.separated(
+              itemCount: transactions.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 5),
+              itemBuilder: (context, index) {
+                final transaction = transactions[index];
+                final isSelected = selectedTransactions.contains(transaction);
+                return _buildTransactionItem(
+                  context,
+                  transaction,
+                  activeAccount!.currencyCode,
+                  isSelected,
+                );
+              },
+            ),
+          ),
+        ],
       ),
-    );
-  }
-
-  Widget _buildRecentTransactions(
-      List<Transaction> transactions,
-      bool isSearching,
-      String searchQuery,
-      BuildContext context) {
-    final bool isSelectionMode = selectedTransactions.isNotEmpty;
-    final bool showTitle = !isSearching && !isSelectionMode;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (showTitle)
-          Text(
-            "Recent Transactions",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).textTheme.bodyLarge?.color,
-            ),
-          ),
-        if (showTitle) const SizedBox(height: 10),
-        transactions.isEmpty
-            ? Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 40.0),
-            child: Text(
-              searchQuery.isNotEmpty
-                  ? 'No transactions found.'
-                  : "No transactions for this account yet.",
-              style: const TextStyle(color: Colors.grey, fontSize: 16),
-            ),
-          ),
-        )
-            : ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: transactions.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 5),
-          itemBuilder: (context, index) {
-            final transaction = transactions[index];
-            final isSelected = selectedTransactions.contains(transaction);
-            return _buildTransactionItem(
-              context,
-              transaction,
-              activeAccount!.currencyCode,
-              isSelected,
-            );
-          },
-        ),
-      ],
     );
   }
 
