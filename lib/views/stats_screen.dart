@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
@@ -5,6 +6,90 @@ import 'package:collection/collection.dart';
 import '../models/account_model.dart';
 import '../models/transaction_model.dart';
 import '../services/currency_formatter_service.dart';
+
+class StatsData {
+  final Map<String, double> expenseByCategory;
+  final Map<String, double> incomeByCategory;
+  final double totalExpense;
+  final double totalIncome;
+
+  StatsData({
+    required this.expenseByCategory,
+    required this.incomeByCategory,
+    required this.totalExpense,
+    required this.totalIncome,
+  });
+}
+
+StatsData _computeStats(Map<String, dynamic> args) {
+  final List<Transaction> transactions = args['transactions'];
+  final String selectedPeriod = args['selectedPeriod'];
+  final now = DateTime.now();
+  List<Transaction> periodTransactions;
+  switch (selectedPeriod) {
+    case 'Daily':
+      periodTransactions = transactions.where((t) {
+        return t.date.year == now.year &&
+            t.date.month == now.month &&
+            t.date.day == now.day;
+      }).toList();
+      break;
+    case 'Weekly':
+      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+      final firstDayOfWeek =
+      DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+      periodTransactions = transactions.where((t) {
+        return t.date
+            .isAfter(firstDayOfWeek.subtract(const Duration(seconds: 1)));
+      }).toList();
+      break;
+    case 'Yearly':
+      periodTransactions = transactions.where((t) {
+        return t.date.year == now.year;
+      }).toList();
+      break;
+    case 'Monthly':
+    default:
+      periodTransactions = transactions.where((t) {
+        return t.date.year == now.year && t.date.month == now.month;
+      }).toList();
+      break;
+  }
+
+  final expenseData = <String, double>{};
+  final incomeData = <String, double>{};
+  double totalExpense = 0.0;
+  double totalIncome = 0.0;
+
+  for (var transaction in periodTransactions) {
+    final category = transaction.category ?? 'Uncategorized';
+    if (transaction.type == TransactionType.expense) {
+      expenseData[category] =
+          (expenseData[category] ?? 0) + transaction.amount;
+      totalExpense += transaction.amount;
+    } else {
+      incomeData[category] =
+          (incomeData[category] ?? 0) + transaction.amount;
+      totalIncome += transaction.amount;
+    }
+  }
+
+  final sortedExpenseByCategory = Map.fromEntries(
+    expenseData.entries.toList()
+      ..sort((e1, e2) => e2.value.compareTo(e1.value)),
+  );
+  final sortedIncomeByCategory = Map.fromEntries(
+    incomeData.entries.toList()
+      ..sort((e1, e2) => e2.value.compareTo(e1.value)),
+  );
+
+  return StatsData(
+    expenseByCategory: sortedExpenseByCategory,
+    incomeByCategory: sortedIncomeByCategory,
+    totalExpense: totalExpense,
+    totalIncome: totalIncome,
+  );
+}
 
 class StatsScreen extends StatefulWidget {
   final Account account;
@@ -25,177 +110,115 @@ class StatsScreen extends StatefulWidget {
 }
 
 class _StatsScreenState extends State<StatsScreen> {
-  late Map<String, double> _expenseByCategory;
-  late Map<String, double> _incomeByCategory;
-  late double _totalExpense;
-  late double _totalIncome;
-
+  late Future<StatsData> _statsDataFuture;
   int _touchedIndex = -1;
 
   final List<Color> _categoryColors = [
-    Colors.orange.shade400,
-    Colors.red.shade400,
-    Colors.green.shade400,
-    Colors.blue.shade400,
-    Colors.purple.shade400,
-    Colors.teal.shade400,
+    Colors.orange.shade400, Colors.red.shade400, Colors.green.shade400,
+    Colors.blue.shade400, Colors.purple.shade400, Colors.teal.shade400,
     Colors.pink.shade300,
   ];
 
   final Map<String, IconData> _categoryIcons = {
-    'Groceries': Icons.shopping_cart,
-    'Food': Icons.fastfood,
-    'Travel': Icons.airplanemode_active,
-    'Bills': Icons.receipt,
-    'Entertainment': Icons.movie,
-    'Health': Icons.health_and_safety,
-    'Education': Icons.school,
-    'Pets': Icons.pets,
-    'Home': Icons.home,
-    'Transport': Icons.train,
-    'Gadgets': Icons.phone_android,
-    'Fuel': Icons.local_gas_station,
-    'Salary': Icons.attach_money,
-    'Freelance': Icons.work,
-    'Bonus': Icons.card_giftcard,
-    'Investment': Icons.trending_up,
-    'Gift': Icons.redeem,
-    'Other': Icons.attach_money,
+    'Groceries': Icons.shopping_cart, 'Food': Icons.fastfood,
+    'Travel': Icons.airplanemode_active, 'Bills': Icons.receipt,
+    'Entertainment': Icons.movie, 'Health': Icons.health_and_safety,
+    'Education': Icons.school, 'Pets': Icons.pets,
+    'Home': Icons.home, 'Transport': Icons.train,
+    'Gadgets': Icons.phone_android, 'Fuel': Icons.local_gas_station,
+    'Salary': Icons.attach_money, 'Freelance': Icons.work,
+    'Bonus': Icons.card_giftcard, 'Investment': Icons.trending_up,
+    'Gift': Icons.redeem, 'Other': Icons.attach_money,
   };
 
   @override
   void initState() {
     super.initState();
-    _processTransactionData();
+    _statsDataFuture = _processTransactionData();
   }
 
   @override
   void didUpdateWidget(covariant StatsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.transactions != oldWidget.transactions ||
-        widget.account != oldWidget.account ||
-        widget.selectedPeriod != oldWidget.selectedPeriod ||
-        widget.selectedType != oldWidget.selectedType) {
-      _processTransactionData();
+        widget.selectedPeriod != oldWidget.selectedPeriod) {
+      setState(() {
+        _statsDataFuture = _processTransactionData();
+      });
     }
   }
 
-  void _processTransactionData() {
-    final now = DateTime.now();
-    List<Transaction> periodTransactions;
-
-    switch (widget.selectedPeriod) {
-      case 'Daily':
-        periodTransactions = widget.transactions.where((t) {
-          return t.date.year == now.year &&
-              t.date.month == now.month &&
-              t.date.day == now.day;
-        }).toList();
-        break;
-      case 'Weekly':
-        final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-        final firstDayOfWeek =
-        DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
-        periodTransactions = widget.transactions.where((t) {
-          return t.date
-              .isAfter(firstDayOfWeek.subtract(const Duration(seconds: 1)));
-        }).toList();
-        break;
-      case 'Yearly':
-        periodTransactions = widget.transactions.where((t) {
-          return t.date.year == now.year;
-        }).toList();
-        break;
-      case 'Monthly':
-      default:
-        periodTransactions = widget.transactions.where((t) {
-          return t.date.year == now.year && t.date.month == now.month;
-        }).toList();
-        break;
-    }
-
-    final expenseData = <String, double>{};
-    final incomeData = <String, double>{};
-    _totalExpense = 0.0;
-    _totalIncome = 0.0;
-
-    for (var transaction in periodTransactions) {
-      final category = transaction.category ?? 'Uncategorized';
-      if (transaction.type == TransactionType.expense) {
-        expenseData[category] =
-            (expenseData[category] ?? 0) + transaction.amount;
-        _totalExpense += transaction.amount;
-      } else {
-        incomeData[category] =
-            (incomeData[category] ?? 0) + transaction.amount;
-        _totalIncome += transaction.amount;
-      }
-    }
-
-    _expenseByCategory = Map.fromEntries(
-      expenseData.entries.toList()
-        ..sort((e1, e2) => e2.value.compareTo(e1.value)),
-    );
-    _incomeByCategory = Map.fromEntries(
-      incomeData.entries.toList()
-        ..sort((e1, e2) => e2.value.compareTo(e1.value)),
-    );
-  }
-
-  Map<String, double> get _activeCategoryData {
-    return widget.selectedType == TransactionType.expense
-        ? _expenseByCategory
-        : _incomeByCategory;
-  }
-
-  double get _totalForActiveType {
-    return widget.selectedType == TransactionType.expense
-        ? _totalExpense
-        : _totalIncome;
+  Future<StatsData> _processTransactionData() async {
+    final args = {
+      'transactions': widget.transactions,
+      'selectedPeriod': widget.selectedPeriod,
+    };
+    return await compute(_computeStats, args);
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool noData = widget.selectedType == TransactionType.expense
-        ? _expenseByCategory.isEmpty
-        : _incomeByCategory.isEmpty;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16.0, 10.0, 16.0, 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (noData)
-            Center(
+    return FutureBuilder<StatsData>(
+      future: _statsDataFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error calculating statistics: ${snapshot.error}',
+              style: const TextStyle(color: Colors.red),
+            ),
+          );
+        }
+        if (snapshot.hasData) {
+          final stats = snapshot.data!;
+          final Map<String, double> activeCategoryData =
+          widget.selectedType == TransactionType.expense
+              ? stats.expenseByCategory
+              : stats.incomeByCategory;
+          final double totalForActiveType =
+          widget.selectedType == TransactionType.expense
+              ? stats.totalExpense
+              : stats.totalIncome;
+          if (activeCategoryData.isEmpty) {
+            return Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 80.0),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.pie_chart_outline,
-                        size: 60, color: Colors.grey),
+                    const Icon(Icons.pie_chart_outline, size: 60, color: Colors.grey),
                     const SizedBox(height: 16),
                     Text(
                       'No ${widget.selectedType.name} data for this period.',
-                      style:
-                      TextStyle(fontSize: 18, color: Colors.grey.shade700),
+                      style: TextStyle(fontSize: 18, color: Colors.grey.shade700),
                     ),
                   ],
                 ),
               ),
-            )
-          else ...[
-            _buildStatisticsCard(isDarkMode),
-            const SizedBox(height: 10),
-            _buildExpensesList(isDarkMode),
-          ],
-        ],
-      ),
+            );
+          }
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16.0, 10.0, 16.0, 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildStatisticsCard(isDarkMode, activeCategoryData, totalForActiveType),
+                const SizedBox(height: 10),
+                _buildExpensesList(isDarkMode, activeCategoryData, totalForActiveType),
+              ],
+            ),
+          );
+        }
+        return const Center(child: Text('No data available.'));
+      },
     );
   }
 
-  Widget _buildStatisticsCard(bool isDarkMode) {
+  Widget _buildStatisticsCard(bool isDarkMode, Map<String, double> activeCategoryData, double totalForActiveType) {
     return Container(
       padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
@@ -236,12 +259,12 @@ class _StatsScreenState extends State<StatsScreen> {
                     thumbVisibility: true,
                     child: ListView.builder(
                       padding: const EdgeInsets.only(right: 12.0),
-                      itemCount: _activeCategoryData.length,
+                      itemCount: activeCategoryData.length,
                       itemBuilder: (context, index) {
                         final entry =
-                        _activeCategoryData.entries.elementAt(index);
-                        final percentage = (_totalForActiveType > 0)
-                            ? (entry.value / _totalForActiveType)
+                        activeCategoryData.entries.elementAt(index);
+                        final percentage = (totalForActiveType > 0)
+                            ? (entry.value / totalForActiveType)
                             : 0.0;
                         final color =
                         _categoryColors[index % _categoryColors.length];
@@ -305,7 +328,7 @@ class _StatsScreenState extends State<StatsScreen> {
                             });
                           },
                         ),
-                        sections: _getChartSections(),
+                        sections: _getChartSections(activeCategoryData),
                         centerSpaceRadius: 40,
                         sectionsSpace: 2,
                       ),
@@ -328,8 +351,8 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  List<PieChartSectionData> _getChartSections() {
-    return _activeCategoryData.entries.mapIndexed((index, entry) {
+  List<PieChartSectionData> _getChartSections(Map<String, double> activeCategoryData) {
+    return activeCategoryData.entries.mapIndexed((index, entry) {
       final isTouched = index == _touchedIndex;
       final radius = isTouched ? 34.0 : 28.0;
 
@@ -342,7 +365,7 @@ class _StatsScreenState extends State<StatsScreen> {
     }).toList();
   }
 
-  Widget _buildExpensesList(bool isDarkMode) {
+  Widget _buildExpensesList(bool isDarkMode, Map<String, double> activeCategoryData, double totalForActiveType) {
     final title = widget.selectedType == TransactionType.expense
         ? 'Expenses by Category'
         : 'Income by Category';
@@ -377,16 +400,16 @@ class _StatsScreenState extends State<StatsScreen> {
               Text('Total for ${widget.selectedPeriod}',
                   style: TextStyle(color: Colors.grey.shade600)),
               Text(
-                CurrencyFormatterService.format(_totalForActiveType, currencyCode),
+                CurrencyFormatterService.format(totalForActiveType, currencyCode),
                 style: const TextStyle(
                     fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ],
           ),
           const Divider(height: 20),
-          ..._activeCategoryData.entries.mapIndexed((index, entry) {
-            final percentage = (_totalForActiveType > 0)
-                ? (entry.value / _totalForActiveType)
+          ...activeCategoryData.entries.mapIndexed((index, entry) {
+            final percentage = (totalForActiveType > 0)
+                ? (entry.value / totalForActiveType)
                 : 0.0;
             final color = _categoryColors[index % _categoryColors.length];
             final icon = _categoryIcons[entry.key] ?? Icons.category;
