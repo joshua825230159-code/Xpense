@@ -34,13 +34,31 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       if (error != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(error),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    error,
+                    style: const TextStyle(color: Colors.white),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            backgroundColor: Colors.red.shade600,
+            duration: const Duration(seconds: 3),
           ),
         );
       } else {
-        // On success, AuthWrapper will handle navigation
-        Navigator.of(context).pop(); // Pop back to the login screen
+        Navigator.of(context).pop();
       }
     }
   }
@@ -74,7 +92,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     prefixIcon: Icon(Icons.person),
                   ),
                   validator: (value) =>
-                      value!.isEmpty ? 'Please enter a username' : null,
+                  value!.isEmpty ? 'Please enter a username' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -115,17 +133,17 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 _isLoading
                     ? const CircularProgressIndicator()
                     : SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _register,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: const Text('Register',
-                              style: TextStyle(color: Colors.white)),
-                        ),
-                      ),
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _register,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text('Register',
+                        style: TextStyle(color: Colors.white)),
+                  ),
+                ),
               ],
             ),
           ),
