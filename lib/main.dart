@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:xpense/services/sqlite_service.dart';
 import 'package:xpense/viewmodels/auth_viewmodel.dart';
 import 'package:xpense/viewmodels/main_viewmodel.dart';
 import 'package:xpense/views/auth_wrapper.dart';
@@ -9,21 +8,19 @@ import 'utils/app_themes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SqliteService.instance.database;
-
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        
+
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
-        
+
         ChangeNotifierProxyProvider<AuthViewModel, MainViewModel>(
           create: (context) => MainViewModel(
             context.read<AuthViewModel>().user?.id,
           ),
           update: (context, auth, previousViewModel) =>
-              previousViewModel!..updateUser(auth.user?.id),
+          previousViewModel!..updateUser(auth.user?.id),
         ),
       ],
       child: const MyApp(),
