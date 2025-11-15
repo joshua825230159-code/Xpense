@@ -658,49 +658,116 @@ class _MainScreenState extends State<MainScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
 
+    final authViewModel = context.watch<AuthViewModel>();
+    final viewModel = context.watch<MainViewModel>();
+
+    final String username = authViewModel.user?.username ?? "Xpense User";
+    final String userInitial = (username.isNotEmpty) ? username[0].toUpperCase() : "X";
+
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          Consumer<AuthViewModel>(
-              builder: (context, authViewModel, child) {
-                final isPremium = authViewModel.user?.isPremium ?? false;
-                return UserAccountsDrawerHeader(
-                  accountName: Text(authViewModel.user?.username ?? "Xpense"),
 
-                  accountEmail: Consumer<MainViewModel>(
-                    builder: (context, viewModel, child) {
-                      if (viewModel.isCalculatingTotal) {
-                        return const Text('Calculating total...', style: TextStyle(color: Colors.white70));
-                      }
-                      if (viewModel.totalBalanceInBaseCurrency != null) {
-                        final formattedTotal = CurrencyFormatterService.format(
-                            viewModel.totalBalanceInBaseCurrency!,
-                            'IDR'
-                        );
-                        return Text(
-                            'Total Balance: $formattedTotal',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
-                        );
-                      }
-                      if (viewModel.calculationError.isNotEmpty) {
-                        return Text('Error: ${viewModel.calculationError}', style: const TextStyle(color: Colors.redAccent));
-                      }
-                      return Text(isPremium ? "Premium Member" : "Track your expenses");
-                    },
-                  ),
+          DrawerHeader(
+            padding: EdgeInsets.zero,
+            decoration: const BoxDecoration(
+              color: Colors.orange,
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  bottom: 16.0,
+                  left: 16.0,
+                  right: 16.0,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
 
-                  currentAccountPicture: CircleAvatar(
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      isPremium ? Icons.star : Icons.monetization_on,
-                      color: Colors.orange,
-                      size: 40,
-                    ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          CircleAvatar(
+                            radius: 28,
+                            backgroundColor: Colors.white,
+                            child: Text(
+                              userInitial,
+                              style: const TextStyle(
+                                color: Colors.orange,
+                                fontSize: 30,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              username,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      Consumer<MainViewModel>(
+                        builder: (context, vm, child) {
+                          Widget balanceWidget;
+
+                          if (vm.isCalculatingTotal) {
+                            balanceWidget = const Text(
+                              'Calculating total...',
+                              key: ValueKey(1),
+                              style: TextStyle(color: Colors.white70, fontSize: 16),
+                            );
+                          } else if (vm.totalBalanceInBaseCurrency != null) {
+                            final formattedTotal = CurrencyFormatterService.format(
+                                vm.totalBalanceInBaseCurrency!, 'IDR');
+                            balanceWidget = Text(
+                              'Total: $formattedTotal',
+                              key: ValueKey(2),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 18,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          } else if (vm.calculationError.isNotEmpty) {
+                            balanceWidget = const Text(
+                              'Error loading balance',
+                              key: ValueKey(3),
+                              style: TextStyle(color: Colors.white70, fontSize: 16),
+                            );
+                          } else {
+                            balanceWidget = Text(
+                                authViewModel.user?.isPremium ?? false
+                                    ? "Premium Member"
+                                    : "Track your expenses",
+                                key: ValueKey(4),
+                                style: const TextStyle(color: Colors.white70, fontSize: 16)
+                            );
+                          }
+
+                          return AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            child: balanceWidget,
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                  decoration: const BoxDecoration(color: Colors.orange),
-                );
-              }
+                ),
+              ],
+            ),
           ),
 
           _buildDrawerSectionTitle("Manage accounts"),
@@ -711,7 +778,6 @@ class _MainScreenState extends State<MainScreen> {
           ),
           const Divider(),
           _buildDrawerSectionTitle("Accounts"),
-
           ...accounts.map((account) => ListTile(
             leading: CircleAvatar(
               backgroundColor: account.color,
@@ -728,7 +794,6 @@ class _MainScreenState extends State<MainScreen> {
             selectedTileColor: Colors.orange.withOpacity(0.1),
             onTap: () => _changeActiveAccount(account),
           )),
-
           const Divider(),
           _buildDrawerSectionTitle("Settings & Tools"),
           SwitchListTile(
@@ -743,16 +808,13 @@ class _MainScreenState extends State<MainScreen> {
                   : Icons.light_mode_outlined,
             ),
           ),
-
           ListTile(
             leading: const Icon(Icons.currency_exchange),
             title: const Text('Live Exchange Rates'),
             onTap: _showCurrencyConverter,
           ),
-
           const Divider(),
           _buildDrawerSectionTitle("Membership"),
-
           Consumer<AuthViewModel>(
               builder: (context, authViewModel, child) {
                 final isPremium = authViewModel.user?.isPremium ?? false;
@@ -770,11 +832,30 @@ class _MainScreenState extends State<MainScreen> {
                     onTap: () async {
                       await authViewModel.becomePremium();
                       Navigator.of(context).pop();
+
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content:
-                          Text('Congratulations, you are now a Premium Member!'),
-                          backgroundColor: Colors.green,
+                        SnackBar(
+                          content: const Row(
+                            children: [
+                              Icon(Icons.star, color: Colors.white),
+                              SizedBox(width: 10),
+                              Expanded( // <<<--- Perbaikan di sini
+                                child: Text(
+                                  'Congratulations, you are now a Premium Member!',
+                                  style: TextStyle(fontSize: 14), // <<<--- Ukuran font lebih kecil
+                                  maxLines: 2, // <<<--- Batasi baris
+                                  overflow: TextOverflow.ellipsis, // <<<--- Potong dengan elipsis
+                                ),
+                              ),
+                            ],
+                          ),
+                          behavior: SnackBarBehavior.floating,
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          backgroundColor: Colors.green.shade600,
+                          duration: const Duration(seconds: 3),
                         ),
                       );
                     },
@@ -782,7 +863,6 @@ class _MainScreenState extends State<MainScreen> {
                 }
               }
           ),
-
           ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Logout'),
