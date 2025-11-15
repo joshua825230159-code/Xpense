@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:xpense/services/api_service.dart';
 import 'package:xpense/viewmodels/main_viewmodel.dart';
 import 'package:xpense/viewmodels/auth_viewmodel.dart';
 import '../models/account_model.dart';
@@ -38,13 +40,23 @@ class _MainScreenState extends State<MainScreen> {
 
   final ExportService _exportService = ExportService();
 
+  bool _isAutoUpdateEnabled = true;
+
   @override
   void initState() {
     super.initState();
+    _loadSettings();
     _searchController.addListener(() {
       if (_searchController.text.isEmpty && _searchQuery.isNotEmpty) {
         _updateSearchQuery('');
       }
+    });
+  }
+
+  void _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _isAutoUpdateEnabled = prefs.getBool(ApiService.kAutoUpdateKey) ?? true;
     });
   }
 
@@ -808,6 +820,23 @@ class _MainScreenState extends State<MainScreen> {
                   : Icons.light_mode_outlined,
             ),
           ),
+          SwitchListTile(
+            title: const Text('Auto-update Exchange Rates'),
+            subtitle: Text(_isAutoUpdateEnabled ? 'Enabled (Every 24h)' : 'Disabled'),
+            value: _isAutoUpdateEnabled,
+            onChanged: (value) async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool(ApiService.kAutoUpdateKey, value);
+              setState(() {
+                _isAutoUpdateEnabled = value;
+              });
+            },
+            secondary: Icon(
+              _isAutoUpdateEnabled
+                  ? Icons.sync
+                  : Icons.sync_disabled,
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.currency_exchange),
             title: const Text('Live Exchange Rates'),
@@ -839,12 +868,12 @@ class _MainScreenState extends State<MainScreen> {
                             children: [
                               Icon(Icons.star, color: Colors.white),
                               SizedBox(width: 10),
-                              Expanded( // <<<--- Perbaikan di sini
+                              Expanded(
                                 child: Text(
                                   'Congratulations, you are now a Premium Member!',
-                                  style: TextStyle(fontSize: 14), // <<<--- Ukuran font lebih kecil
-                                  maxLines: 2, // <<<--- Batasi baris
-                                  overflow: TextOverflow.ellipsis, // <<<--- Potong dengan elipsis
+                                  style: TextStyle(fontSize: 14),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],

@@ -7,6 +7,7 @@ class ApiService {
 
   static const String _ratesCacheKeyPrefix = 'cached_all_rates_';
   static const String _ratesTimestampKeyPrefix = 'rates_cache_timestamp_';
+  static const String kAutoUpdateKey = 'isAutoUpdateEnabled';
 
   Future<Map<String, double>> getRatesForBaseCurrency(
       String fromCurrency, List<String> toCurrencies) async {
@@ -44,17 +45,18 @@ class ApiService {
     final String cacheKey = '$_ratesCacheKeyPrefix$fromCurrency';
     final String timestampKey = '$_ratesTimestampKeyPrefix$fromCurrency';
 
+    final bool isAutoUpdateEnabled = prefs.getBool(kAutoUpdateKey) ?? true;
+
     final String? cachedTimestampStr = prefs.getString(timestampKey);
-    if (cachedTimestampStr != null) {
+    final String? cachedRatesStr = prefs.getString(cacheKey);
+
+    if (cachedTimestampStr != null && cachedRatesStr != null) {
       final DateTime cachedTimestamp = DateTime.parse(cachedTimestampStr);
       final bool isCacheFresh = DateTime.now().difference(cachedTimestamp).inHours < 24;
 
-      if (isCacheFresh) {
-        final String? cachedRatesStr = prefs.getString(cacheKey);
-        if (cachedRatesStr != null) {
-          final Map<String, dynamic> cachedMap = json.decode(cachedRatesStr);
-          return cachedMap.map((key, value) => MapEntry(key, value as double));
-        }
+      if (isCacheFresh || !isAutoUpdateEnabled) {
+        final Map<String, dynamic> cachedMap = json.decode(cachedRatesStr);
+        return cachedMap.map((key, value) => MapEntry(key, value as double));
       }
     }
 
