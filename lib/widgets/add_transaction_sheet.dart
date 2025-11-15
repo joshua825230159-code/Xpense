@@ -57,12 +57,27 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
     super.dispose();
   }
 
+  double _parseAmount(String amountText, String currencyCode) {
+    String cleanBalance;
+    if (currencyCode == 'IDR' || currencyCode == 'JPY') {
+      cleanBalance = amountText.replaceAll('.', '');
+    } else {
+      cleanBalance = amountText.replaceAll(',', '');
+    }
+    return double.tryParse(cleanBalance) ?? 0.0;
+  }
+
   void _submitData() {
     if (_formKey.currentState!.validate()) {
+      final double amount = _parseAmount(
+          _amountController.text,
+          widget.accountCurrencyCode
+      );
+
       final newTransaction = Transaction(
         accountId: widget.accountId,
         description: _descriptionController.text,
-        amount: double.parse(_amountController.text),
+        amount: amount,
         type: _transactionType,
         date: _selectedDate,
         iconValue: _selectedIcon.codePoint,
@@ -146,7 +161,12 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Please enter an amount';
-                  if (double.tryParse(value) == null) return 'Please enter a valid number';
+
+                  final double? amount = double.tryParse(
+                      value.replaceAll('.', '').replaceAll(',', '')
+                  );
+
+                  if (amount == null) return 'Please enter a valid number';
                   return null;
                 },
               ),

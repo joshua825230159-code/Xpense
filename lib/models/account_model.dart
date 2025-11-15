@@ -33,7 +33,16 @@ class Account with EquatableMixin {
   }) : id = id ?? const Uuid().v4();
 
   @override
-  List<Object?> get props => [id];
+  List<Object?> get props => [
+    id,
+    name,
+    balance,
+    colorValue,
+    type,
+    currencyCode,
+    budget,
+    userId
+  ];
 
   @override
   bool get stringify => true;

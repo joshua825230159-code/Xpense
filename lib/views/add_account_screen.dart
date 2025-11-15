@@ -126,6 +126,12 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     final String fromCurrency = _selectedCurrency;
     final double currentBalance = _parseBalance(_balanceController.text, _selectedCurrency);
 
+    final String currentBudgetText = _budgetController.text;
+    double? currentBudget;
+    if (currentBudgetText.isNotEmpty) {
+      currentBudget = _parseBalance(currentBudgetText, fromCurrency);
+    }
+
     final double? fromRate = (fromCurrency == 'IDR') ? 1.0 : rates[fromCurrency];
     final double? toRate = (newCurrency == 'IDR') ? 1.0 : rates[newCurrency];
 
@@ -145,8 +151,16 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     final double crossRate = toRate / fromRate;
     final double newBalance = currentBalance * crossRate;
 
+    double? newBudget;
+    if (currentBudget != null) {
+      newBudget = currentBudget * crossRate;
+    }
     setState(() {
       _balanceController.text = _formatBalance(newBalance, newCurrency);
+
+      if (newBudget != null) {
+        _budgetController.text = _formatBalance(newBudget, newCurrency);
+      }
       _selectedCurrency = newCurrency;
       _isConverting = false;
     });
@@ -159,13 +173,19 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
           _selectedCurrency
       );
 
+      final String budgetText = _budgetController.text;
+
+      final double? finalBudget = budgetText.isEmpty
+          ? null
+          : _parseBalance(budgetText, _selectedCurrency);
+
       final newOrUpdatedAccount = Account(
         name: _nameController.text,
         balance: finalBalance,
         colorValue: _selectedColor.value,
         type: _selectedType,
         currencyCode: _selectedCurrency,
-        budget: double.tryParse(_budgetController.text),
+        budget: finalBudget,
         id: widget.account?.id,
       );
 

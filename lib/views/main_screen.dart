@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:xpense/viewmodels/main_viewmodel.dart';
 import 'package:xpense/viewmodels/auth_viewmodel.dart';
@@ -64,24 +63,92 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  void _showSortDialog() {
+  void _showSortBottomSheet() {
     final periods = ['Daily', 'Weekly', 'Monthly', 'Yearly'];
-    showDialog(
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    showModalBottomSheet(
       context: context,
+      backgroundColor: theme.cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
-        return SimpleDialog(
-          title: const Text('Select Period'),
-          children: periods.map((period) {
-            return SimpleDialogOption(
-              onPressed: () {
-                setState(() {
-                  _selectedPeriod = period;
-                });
-                Navigator.pop(context);
-              },
-              child: Text(period),
-            );
-          }).toList(),
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
+                child: Text(
+                  'Select Period',
+                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+              ...periods.map((period) {
+                final bool isSelected = (_selectedPeriod == period);
+                return ListTile(
+                  title: Text(
+                    period,
+                    style: TextStyle(
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected ? Colors.orange : theme.textTheme.bodyLarge?.color,
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? const Icon(Icons.check, color: Colors.orange)
+                      : null,
+                  onTap: () {
+                    setState(() {
+                      _selectedPeriod = period;
+                    });
+                    Navigator.pop(context);
+
+                    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(Icons.check_circle_outline, color: Colors.white),
+                            const SizedBox(width: 10),
+                            Text('Period changed to $period'),
+                          ],
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        backgroundColor: isDarkMode ? Colors.grey.shade800 : Colors.black87,
+                        duration: const Duration(milliseconds: 1500),
+                      ),
+                    );
+                  },
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  selected: isSelected,
+                  selectedTileColor: Colors.orange.withOpacity(0.1),
+                );
+              }).toList(),
+              const SizedBox(height: 10),
+            ],
+          ),
         );
       },
     );
@@ -495,7 +562,7 @@ class _MainScreenState extends State<MainScreen> {
               if (value == 'toggle_type') {
                 _toggleTransactionType();
               } else if (value == 'sort') {
-                _showSortDialog();
+                _showSortBottomSheet();
               } else if (value == 'export') {
                 _showExportDialog();
               }

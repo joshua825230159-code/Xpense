@@ -31,7 +31,16 @@ class Transaction with EquatableMixin {
   }) : id = id ?? const Uuid().v4();
 
   @override
-  List<Object?> get props => [id];
+  List<Object?> get props => [
+    id,
+    accountId,
+    description,
+    amount,
+    type,
+    date,
+    iconValue,
+    category
+  ];
 
   @override
   bool get stringify => true;
