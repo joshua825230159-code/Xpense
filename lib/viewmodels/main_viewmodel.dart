@@ -304,8 +304,8 @@ class MainViewModel extends ChangeNotifier {
 
     final ids = transactionsToDelete.map((t) => t.id).toList();
 
-    await _dbService.deleteTransactions(ids);
-
+    // Calculate the balance change BEFORE awaiting the database call.
+    // If we wait until after 'await', the 'transactionsToDelete' set might be cleared by the UI (since it's passed by reference), resulting in 0 balance change.
     double balanceChange = 0;
     for (var tx in transactionsToDelete) {
       if (tx.type == TransactionType.income) {
@@ -314,6 +314,8 @@ class MainViewModel extends ChangeNotifier {
         balanceChange += tx.amount;
       }
     }
+    await _dbService.deleteTransactions(ids);
+
     _activeAccount!.balance += balanceChange;
     await _dbService.updateAccount(_activeAccount!);
 
