@@ -479,7 +479,7 @@ class _MainScreenState extends State<MainScreen> {
           : (_isSearching
           ? _buildSearchAppBar()
           : _buildDefaultAppBar(activeAccount)),
-      drawer: _buildDrawer(accounts, activeAccount),
+      drawer: _buildDrawer(),
       body: accounts.isEmpty
           ? _buildEmptyState()
           : IndexedStack(
@@ -669,245 +669,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Drawer _buildDrawer(List<Account> accounts, Account? activeAccount) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
-
-    final authViewModel = context.watch<AuthViewModel>();
-    final viewModel = context.watch<MainViewModel>();
-
-    final String username = authViewModel.user?.username ?? "Xpense User";
-    final String userInitial = (username.isNotEmpty) ? username[0].toUpperCase() : "X";
-
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-
-          DrawerHeader(
-            padding: EdgeInsets.zero,
-            decoration: const BoxDecoration(
-              color: Colors.orange,
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  bottom: 16.0,
-                  left: 16.0,
-                  right: 16.0,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          CircleAvatar(
-                            radius: 28,
-                            backgroundColor: Colors.white,
-                            child: Text(
-                              userInitial,
-                              style: const TextStyle(
-                                color: Colors.orange,
-                                fontSize: 30,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              username,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      Consumer<MainViewModel>(
-                        builder: (context, vm, child) {
-                          Widget balanceWidget;
-
-                          if (vm.isCalculatingTotal) {
-                            balanceWidget = const Text(
-                              'Calculating total...',
-                              key: ValueKey(1),
-                              style: TextStyle(color: Colors.white70, fontSize: 16),
-                            );
-                          } else if (vm.totalBalanceInBaseCurrency != null) {
-                            final formattedTotal = CurrencyFormatterService.format(
-                                vm.totalBalanceInBaseCurrency!, 'IDR');
-                            balanceWidget = Text(
-                              'Total: $formattedTotal',
-                              key: ValueKey(2),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 18,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            );
-                          } else if (vm.calculationError.isNotEmpty) {
-                            balanceWidget = const Text(
-                              'Error loading balance',
-                              key: ValueKey(3),
-                              style: TextStyle(color: Colors.white70, fontSize: 16),
-                            );
-                          } else {
-                            balanceWidget = Text(
-                                authViewModel.user?.isPremium ?? false
-                                    ? "Premium Member"
-                                    : "Track your expenses",
-                                key: ValueKey(4),
-                                style: const TextStyle(color: Colors.white70, fontSize: 16)
-                            );
-                          }
-
-                          return AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            child: balanceWidget,
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          _buildDrawerSectionTitle("Manage accounts"),
-          ListTile(
-            leading: const Icon(Icons.add_circle_outline),
-            title: const Text('Manage Accounts'),
-            onTap: _navigateToManageAccounts,
-          ),
-          const Divider(),
-          _buildDrawerSectionTitle("Accounts"),
-          ...accounts.map((account) => ListTile(
-            leading: CircleAvatar(
-              backgroundColor: account.color,
-              radius: 16,
-            ),
-            title: Text(account.name),
-            subtitle: Text(
-                CurrencyFormatterService.format(
-                    account.balance,
-                    account.currencyCode
-                )
-            ),
-            selected: account == activeAccount,
-            selectedTileColor: Colors.orange.withOpacity(0.1),
-            onTap: () => _changeActiveAccount(account),
-          )),
-          const Divider(),
-          _buildDrawerSectionTitle("Settings & Tools"),
-          SwitchListTile(
-            title: const Text('Dark Mode'),
-            value: isDarkMode,
-            onChanged: (value) {
-              themeProvider.toggleTheme(value);
-            },
-            secondary: Icon(
-              isDarkMode
-                  ? Icons.dark_mode_outlined
-                  : Icons.light_mode_outlined,
-            ),
-          ),
-          SwitchListTile(
-            title: const Text('Auto-update Exchange Rates'),
-            subtitle: Text(_isAutoUpdateEnabled ? 'Enabled (Every 24h)' : 'Disabled'),
-            value: _isAutoUpdateEnabled,
-            onChanged: (value) async {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setBool(ApiService.kAutoUpdateKey, value);
-              setState(() {
-                _isAutoUpdateEnabled = value;
-              });
-            },
-            secondary: Icon(
-              _isAutoUpdateEnabled
-                  ? Icons.sync
-                  : Icons.sync_disabled,
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.currency_exchange),
-            title: const Text('Live Exchange Rates'),
-            onTap: _showCurrencyConverter,
-          ),
-          const Divider(),
-          _buildDrawerSectionTitle("Membership"),
-          Consumer<AuthViewModel>(
-              builder: (context, authViewModel, child) {
-                final isPremium = authViewModel.user?.isPremium ?? false;
-                if (isPremium) {
-                  return const ListTile(
-                    leading: Icon(Icons.star, color: Colors.orange),
-                    title: Text('Premium Member'),
-                    subtitle: Text('You have access to all features!'),
-                  );
-                } else {
-                  return ListTile(
-                    leading: const Icon(Icons.star_border),
-                    title: const Text('Become Premium'),
-                    subtitle: const Text('Unlock data export and more!'),
-                    onTap: () async {
-                      await authViewModel.becomePremium();
-                      Navigator.of(context).pop();
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Row(
-                            children: [
-                              Icon(Icons.star, color: Colors.white),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'Congratulations, you are now a Premium Member!',
-                                  style: TextStyle(fontSize: 14),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                          behavior: SnackBarBehavior.floating,
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          backgroundColor: Colors.green.shade600,
-                          duration: const Duration(seconds: 3),
-                        ),
-                      );
-                    },
-                  );
-                }
-              }
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Logout'),
-            onTap: () {
-              Navigator.of(context).pop();
-              context.read<AuthViewModel>().logout();
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDrawerSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -918,6 +679,276 @@ class _MainScreenState extends State<MainScreen> {
           fontWeight: FontWeight.bold,
           fontSize: 12,
         ),
+      ),
+    );
+  }
+
+  Widget _buildDrawer() {
+    final authViewModel = context.read<AuthViewModel>();
+    final viewModel = context.read<MainViewModel>();
+    final themeProvider = context.read<ThemeProvider>();
+
+    final accounts = viewModel.accounts;
+    final activeAccount = viewModel.activeAccount;
+    final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
+
+    final List<dynamic> drawerItems = [];
+
+    drawerItems.add('header');
+    drawerItems.add('section_manage');
+    drawerItems.add('tile_manage');
+    drawerItems.add('divider1');
+    drawerItems.add('section_accounts');
+    drawerItems.addAll(accounts);
+    drawerItems.add('divider2');
+    drawerItems.add('section_settings');
+    drawerItems.add('tile_dark_mode');
+    drawerItems.add('tile_auto_update');
+    drawerItems.add('tile_converter');
+    drawerItems.add('divider3');
+    drawerItems.add('section_membership');
+    drawerItems.add('tile_premium');
+    drawerItems.add('tile_logout');
+
+    return Drawer(
+      child: ListView.builder(
+        padding: EdgeInsets.zero,
+        itemCount: drawerItems.length,
+        itemBuilder: (context, index) {
+          final item = drawerItems[index];
+
+          if (item is Account) {
+            return ListTile(
+              leading: CircleAvatar(
+                backgroundColor: item.color,
+                radius: 16,
+              ),
+              title: Text(item.name),
+              subtitle: Text(
+                  CurrencyFormatterService.format(
+                      item.balance,
+                      item.currencyCode
+                  )
+              ),
+              selected: item == activeAccount,
+              selectedTileColor: Colors.orange.withOpacity(0.1),
+              onTap: () => _changeActiveAccount(item),
+            );
+          }
+
+          if (item is String) {
+            switch (item) {
+              case 'header':
+                final String username = authViewModel.user?.username ?? "Xpense User";
+                final String userInitial = (username.isNotEmpty) ? username[0].toUpperCase() : "X";
+                return DrawerHeader(
+                  padding: EdgeInsets.zero,
+                  decoration: const BoxDecoration(
+                    color: Colors.orange,
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        bottom: 16.0,
+                        left: 16.0,
+                        right: 16.0,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                CircleAvatar(
+                                  radius: 28,
+                                  backgroundColor: Colors.white,
+                                  child: Text(
+                                    userInitial,
+                                    style: const TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 30,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    username,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Consumer<MainViewModel>(
+                              builder: (context, vm, child) {
+                                Widget balanceWidget;
+                                if (vm.isCalculatingTotal) {
+                                  balanceWidget = const Text(
+                                    'Calculating total...',
+                                    key: ValueKey(1),
+                                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                                  );
+                                } else if (vm.totalBalanceInBaseCurrency != null) {
+                                  final formattedTotal = CurrencyFormatterService.format(
+                                      vm.totalBalanceInBaseCurrency!, 'IDR');
+                                  balanceWidget = Text(
+                                    'Total: $formattedTotal',
+                                    key: ValueKey(2),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 18,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  );
+                                } else if (vm.calculationError.isNotEmpty) {
+                                  balanceWidget = const Text(
+                                    'Error loading balance',
+                                    key: ValueKey(3),
+                                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                                  );
+                                } else {
+                                  balanceWidget = Text(
+                                      authViewModel.user?.isPremium ?? false
+                                          ? "Premium Member"
+                                          : "Track your expenses",
+                                      key: ValueKey(4),
+                                      style: const TextStyle(color: Colors.white70, fontSize: 16)
+                                  );
+                                }
+                                return balanceWidget;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              case 'section_manage':
+                return _buildDrawerSectionTitle("Manage accounts");
+              case 'tile_manage':
+                return ListTile(
+                  leading: const Icon(Icons.add_circle_outline),
+                  title: const Text('Manage Accounts'),
+                  onTap: _navigateToManageAccounts,
+                );
+              case 'divider1':
+              case 'divider2':
+              case 'divider3':
+                return const Divider();
+              case 'section_accounts':
+                return _buildDrawerSectionTitle("Accounts");
+              case 'section_settings':
+                return _buildDrawerSectionTitle("Settings & Tools");
+              case 'tile_dark_mode':
+                return SwitchListTile(
+                  title: const Text('Dark Mode'),
+                  value: isDarkMode,
+                  onChanged: (value) {
+                    themeProvider.toggleTheme(value);
+                  },
+                  secondary: Icon(
+                    isDarkMode
+                        ? Icons.dark_mode_outlined
+                        : Icons.light_mode_outlined,
+                  ),
+                );
+              case 'tile_auto_update':
+                return SwitchListTile(
+                  title: const Text('Auto-update Exchange Rates'),
+                  subtitle: Text(_isAutoUpdateEnabled ? 'Enabled (Every 24h)' : 'Disabled'),
+                  value: _isAutoUpdateEnabled,
+                  onChanged: (value) async {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool(ApiService.kAutoUpdateKey, value);
+                    setState(() {
+                      _isAutoUpdateEnabled = value;
+                    });
+                  },
+                  secondary: Icon(
+                    _isAutoUpdateEnabled
+                        ? Icons.sync
+                        : Icons.sync_disabled,
+                  ),
+                );
+              case 'tile_converter':
+                return ListTile(
+                  leading: const Icon(Icons.currency_exchange),
+                  title: const Text('Live Exchange Rates'),
+                  onTap: _showCurrencyConverter,
+                );
+              case 'section_membership':
+                return _buildDrawerSectionTitle("Membership");
+              case 'tile_premium':
+                return Consumer<AuthViewModel>(
+                    builder: (context, authVM, child) {
+                      final isPremium = authVM.user?.isPremium ?? false;
+                      if (isPremium) {
+                        return const ListTile(
+                          leading: Icon(Icons.star, color: Colors.orange),
+                          title: Text('Premium Member'),
+                          subtitle: Text('You have access to all features!'),
+                        );
+                      } else {
+                        return ListTile(
+                          leading: const Icon(Icons.star_border),
+                          title: const Text('Become Premium'),
+                          subtitle: const Text('Unlock data export and more!'),
+                          onTap: () async {
+                            await authVM.becomePremium();
+                            Navigator.of(context).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Row(
+                                  children: [
+                                    Icon(Icons.star, color: Colors.white),
+                                    SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        'Congratulations, you are now a Premium Member!',
+                                        style: TextStyle(fontSize: 14),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                backgroundColor: Colors.green.shade600,
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          },
+                        );
+                      }
+                    }
+                );
+              case 'tile_logout':
+                return ListTile(
+                  leading: const Icon(Icons.logout),
+                  title: const Text('Logout'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    authViewModel.logout();
+                  },
+                );
+            }
+          }
+          return const SizedBox.shrink();
+        },
       ),
     );
   }

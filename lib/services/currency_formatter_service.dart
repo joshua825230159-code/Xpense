@@ -12,7 +12,13 @@ class CurrencyFormatterService {
     'MYR': ('RM', 2),
   };
 
-  static String format(double amount, String currencyCode) {
+  static final Map<String, NumberFormat> _formatterCache = {};
+
+  static NumberFormat _getFormatter(String currencyCode) {
+    if (_formatterCache.containsKey(currencyCode)) {
+      return _formatterCache[currencyCode]!;
+    }
+
     final (String symbol, int decimals) =
         _currencyFormatInfo[currencyCode] ?? (currencyCode, 2);
 
@@ -24,6 +30,12 @@ class CurrencyFormatterService {
       decimalDigits: decimals,
     );
 
+    _formatterCache[currencyCode] = formatter;
+    return formatter;
+  }
+
+  static String format(double amount, String currencyCode) {
+    final formatter = _getFormatter(currencyCode);
     return formatter.format(amount);
   }
 

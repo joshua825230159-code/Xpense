@@ -224,43 +224,44 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
               const SizedBox(height: 10),
               SizedBox(
                 height: 60,
-                child: GridView.builder(
+                child: ListView(
                   scrollDirection: Axis.horizontal,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 1, mainAxisSpacing: 10),
-                  itemCount: activeIcons.length,
-                  itemBuilder: (context, index) {
-                    final icon = activeIcons[index];
+                  children: activeIcons.map((icon) {
                     final isSelected = icon == _selectedIcon;
-                    return GestureDetector(
-                      onTap: () => setState(() {
-                        _selectedIcon = icon;
-                        _selectedCategory = activeCategoryMap[icon];
-                      }),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: isSelected ? Colors.orange.withOpacity(0.2) : (isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200),
-                          borderRadius: BorderRadius.circular(15),
-                          border: isSelected ? Border.all(color: Colors.orange, width: 2) : null,
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(icon, color: isSelected ? Colors.orange : (isDarkMode ? Colors.white70 : Colors.grey.shade700)),
-                            const SizedBox(height: 4),
-                            Text(
-                              activeCategoryMap[icon]!,
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  color: isSelected ? Colors.orange : (isDarkMode ? Colors.white70 : Colors.grey.shade700)),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 10.0),
+                      child: GestureDetector(
+                        onTap: () => setState(() {
+                          _selectedIcon = icon;
+                          _selectedCategory = activeCategoryMap[icon];
+                        }),
+                        child: Container(
+                          width: 60,
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.orange.withOpacity(0.2) : (isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200),
+                            borderRadius: BorderRadius.circular(15),
+                            border: isSelected ? Border.all(color: Colors.orange, width: 2) : null,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(icon, color: isSelected ? Colors.orange : (isDarkMode ? Colors.white70 : Colors.grey.shade700)),
+                              const SizedBox(height: 4),
+                              Text(
+                                activeCategoryMap[icon]!,
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    color: isSelected ? Colors.orange : (isDarkMode ? Colors.white70 : Colors.grey.shade700)),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
-                  },
+                  }).toList(),
                 ),
               ),
               const SizedBox(height: 20),
