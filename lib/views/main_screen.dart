@@ -138,7 +138,10 @@ class _MainScreenState extends State<MainScreen> {
                           children: [
                             const Icon(Icons.check_circle_outline, color: Colors.white),
                             const SizedBox(width: 10),
-                            Text('Period changed to $period'),
+                            Text(
+                              'Period changed to $period',
+                              style: const TextStyle(color: Colors.white),
+                            ),
                           ],
                         ),
                         behavior: SnackBarBehavior.floating,
@@ -146,7 +149,7 @@ class _MainScreenState extends State<MainScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        backgroundColor: isDarkMode ? Colors.grey.shade800 : Colors.black87,
+                        backgroundColor: isDarkMode ? theme.cardColor : Colors.black87,
                         duration: const Duration(milliseconds: 1500),
                       ),
                     );
