@@ -32,92 +32,84 @@ class ExpenseListScreen extends StatelessWidget {
     final bool showHeader = !isSearching && !isSelectionMode;
 
     if (transactions.isEmpty) {
-      return SafeArea(
-        top: false,
-        child: CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-              sliver: SliverToBoxAdapter(
-                child: Column(
-                  children: [
-                    if (showHeader) ...[
-                      _buildBalanceCard(activeAccount, transactions),
-                      const SizedBox(height: 20),
-                    ],
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 40.0),
-                        child: Text(
-                          searchQuery.isNotEmpty
-                              ? 'No transactions found.'
-                              : "No transactions for this account yet.",
-                          style: const TextStyle(color: Colors.grey, fontSize: 16),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return SafeArea(
-      top: false,
-      child: CustomScrollView(
+      return CustomScrollView(
         slivers: [
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
             sliver: SliverToBoxAdapter(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (showHeader) ...[
-                    _buildBalanceCard(activeAccount, transactions),
+                    _buildBalanceCard(context, activeAccount, transactions),
                     const SizedBox(height: 20),
                   ],
-                  if (showHeader)
-                    Text(
-                      "Recent Transactions",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40.0),
+                      child: Text(
+                        searchQuery.isNotEmpty
+                            ? 'No transactions found.'
+                            : "No transactions for this account yet.",
+                        style: const TextStyle(color: Colors.grey, fontSize: 16),
                       ),
                     ),
-                  if (showHeader) const SizedBox(height: 10),
+                  ),
                 ],
               ),
             ),
           ),
+        ],
+      );
+    }
 
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            sliver: SliverList.separated(
-              itemCount: transactions.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 5),
-              itemBuilder: (context, index) {
-                final transaction = transactions[index];
-                final isSelected = selectedTransactions.contains(transaction);
-                return _buildTransactionItem(
-                  context,
-                  transaction,
-                  activeAccount!.currencyCode,
-                  isSelected,
-                );
-              },
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (showHeader) ...[
+                  _buildBalanceCard(context, activeAccount, transactions),
+                  const SizedBox(height: 20),
+                ],
+                if (showHeader)
+                  Text(
+                    "Recent Transactions",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                    ),
+                  ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 90),
+          sliver: SliverList.separated(
+            itemCount: transactions.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 5),
+            itemBuilder: (context, index) {
+              final transaction = transactions[index];
+              final isSelected = selectedTransactions.contains(transaction);
+              return _buildTransactionItem(
+                context,
+                transaction,
+                activeAccount!.currencyCode,
+                isSelected,
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildBalanceCard(
-      Account? activeAccount, List<Transaction> currentTransactions) {
+  Widget _buildBalanceCard(BuildContext context, Account? activeAccount,
+      List<Transaction> currentTransactions) {
     if (activeAccount == null) return const SizedBox.shrink();
 
     double balance = activeAccount.balance;
@@ -195,15 +187,17 @@ class ExpenseListScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildIncomeExpenseItem(
+                    context,
                     Icons.arrow_downward,
-                    "Total Income",
+                    "Income",
                     CurrencyFormatterService.format(totalIncome, currencyCode)),
               ),
               const SizedBox(width: 15),
               Expanded(
                 child: _buildIncomeExpenseItem(
+                    context,
                     Icons.arrow_upward,
-                    "Total Expense",
+                    "Expense",
                     CurrencyFormatterService.format(
                         overallExpense, currencyCode)),
               ),
@@ -246,7 +240,8 @@ class ExpenseListScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildIncomeExpenseItem(IconData icon, String title, String value) {
+  Widget _buildIncomeExpenseItem(
+      BuildContext context, IconData icon, String title, String value) {
     const textAndIconShadows = [
       Shadow(
         color: Colors.black38,
@@ -255,55 +250,77 @@ class ExpenseListScreen extends StatelessWidget {
       )
     ];
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(5),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              shape: BoxShape.circle,
+    return InkWell(
+      onTap: () {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Total $title: $value',
+              style: const TextStyle(color: Colors.white),
             ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 20,
-              shadows: textAndIconShadows,
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.black87,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
+            duration: const Duration(seconds: 2),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.white70,
-                    shadows: textAndIconShadows,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                    shadows: textAndIconShadows,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+        );
+      },
+      borderRadius: BorderRadius.circular(15),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: Colors.white,
+                size: 20,
+                shadows: textAndIconShadows,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.white70,
+                      shadows: textAndIconShadows,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      shadows: textAndIconShadows,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

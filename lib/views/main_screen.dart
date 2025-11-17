@@ -12,7 +12,7 @@ import 'add_account_screen.dart';
 import 'expense_list_screen.dart';
 import 'manage_accounts_screen.dart';
 import 'stats_screen.dart';
-import 'transaction_detail_screen.dart';
+import 'transaction_detail_screen.dart' hide AddTransactionSheet;
 import '../services/export_service.dart';
 import '../services/currency_formatter_service.dart';
 import '../widgets/currency_converter_dialog.dart';
@@ -217,11 +217,16 @@ class _MainScreenState extends State<MainScreen> {
       );
       return;
     }
-
     final viewModel = context.read<MainViewModel>();
+    final Account? activeAccount = viewModel.activeAccount;
+    if (activeAccount == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No active account selected.')),
+      );
+      return;
+    }
     final List<Transaction> allTransactions =
         viewModel.transactionsForActiveAccount;
-
     final now = DateTime.now();
     List<Transaction> periodTransactions;
 
@@ -265,14 +270,14 @@ class _MainScreenState extends State<MainScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _exportService.exportToCsv(periodTransactions, _selectedPeriod);
+              _exportService.exportToCsv(activeAccount, periodTransactions, _selectedPeriod);
             },
             child: const Text('CSV'),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _exportService.exportToPdf(periodTransactions, _selectedPeriod);
+              _exportService.exportToPdf(activeAccount, periodTransactions, _selectedPeriod);
             },
             child: const Text('PDF'),
           ),
@@ -346,18 +351,43 @@ class _MainScreenState extends State<MainScreen> {
     final bool? confirmed = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Deletion'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0.0),
+        contentPadding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 0.0),
+        actionsPadding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 16.0),
+
+        title: const Text(
+          'Confirm Deletion',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+        ),
         content: Text(
-            'Are you sure you want to delete ${_selectedTransactions.length} transactions? This action cannot be undone.'),
+          'Are you sure you want to delete ${_selectedTransactions.length} transaction${_selectedTransactions.length > 1 ? 's' : ''}? This action cannot be undone.',
+          style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyMedium?.color),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Cancel', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Delete', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -474,6 +504,7 @@ class _MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
+      extendBody: true,
       appBar: _isSelectionMode
           ? _buildSelectionAppBar()
           : (_isSearching
@@ -503,6 +534,8 @@ class _MainScreenState extends State<MainScreen> {
         height: 60.0,
         shape: const CircularNotchedRectangle(),
         notchMargin: 8.0,
+        elevation: 0.0,
+        surfaceTintColor: Colors.transparent,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: <Widget>[
@@ -655,10 +688,10 @@ class _MainScreenState extends State<MainScreen> {
         required bool isSelected,
         required VoidCallback onTap}) {
     return SizedBox(
-      width: 48,
-      height: 48,
+      width: 70.0,
+      height: 60.0,
       child: InkWell(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(30.0),
         onTap: onTap,
         child: Icon(
           icon,
@@ -741,6 +774,8 @@ class _MainScreenState extends State<MainScreen> {
               case 'header':
                 final String username = authViewModel.user?.username ?? "Xpense User";
                 final String userInitial = (username.isNotEmpty) ? username[0].toUpperCase() : "X";
+                final bool isPremium = authViewModel.user?.isPremium ?? false;
+
                 return DrawerHeader(
                   padding: EdgeInsets.zero,
                   decoration: const BoxDecoration(
@@ -759,16 +794,36 @@ class _MainScreenState extends State<MainScreen> {
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                CircleAvatar(
-                                  radius: 28,
-                                  backgroundColor: Colors.white,
-                                  child: Text(
-                                    userInitial,
-                                    style: const TextStyle(
-                                      color: Colors.orange,
-                                      fontSize: 30,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                SizedBox(
+                                  width: 56,
+                                  height: 56,
+                                  child: Stack(
+                                    clipBehavior: Clip.none,
+                                    alignment: Alignment.center,
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 28,
+                                        backgroundColor: Colors.white,
+                                        child: Text(
+                                          userInitial,
+                                          style: const TextStyle(
+                                            color: Colors.orange,
+                                            fontSize: 30,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isPremium)
+                                        Positioned(
+                                          bottom: -4,
+                                          right: -4,
+                                          child: Icon(
+                                            Icons.emoji_events,
+                                            color: Colors.black.withOpacity(0.8),
+                                            size: 24,
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ),
                                 const SizedBox(width: 12),

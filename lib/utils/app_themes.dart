@@ -16,7 +16,7 @@ class AppThemes {
       ),
     ),
     bottomAppBarTheme: const BottomAppBarThemeData(
-      color: Colors.white,
+      surfaceTintColor: Colors.transparent,
     ),
     cardColor: Colors.white,
     textTheme: const TextTheme(
@@ -40,7 +40,7 @@ class AppThemes {
         ),
       ),
       bottomAppBarTheme: const BottomAppBarThemeData(
-        color: Color(0xFF1E1E1E),
+        surfaceTintColor: Colors.transparent,
       ),
       cardColor: const Color(0xFF1E1E1E),
       textTheme: const TextTheme(

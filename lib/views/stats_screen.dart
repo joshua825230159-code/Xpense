@@ -116,7 +116,8 @@ class _StatsScreenState extends State<StatsScreen> {
   final List<Color> _categoryColors = [
     Colors.orange.shade400, Colors.red.shade400, Colors.green.shade400,
     Colors.blue.shade400, Colors.purple.shade400, Colors.teal.shade400,
-    Colors.pink.shade300,
+    Colors.pink.shade300, Colors.amber.shade600, Colors.cyan.shade400,
+    Colors.lime.shade500, Colors.indigo.shade300, Colors.brown.shade400,
   ];
 
   final Map<String, IconData> _categoryIcons = {
@@ -126,10 +127,21 @@ class _StatsScreenState extends State<StatsScreen> {
     'Education': Icons.school, 'Pets': Icons.pets,
     'Home': Icons.home, 'Transport': Icons.train,
     'Gadgets': Icons.phone_android, 'Fuel': Icons.local_gas_station,
-    'Salary': Icons.attach_money, 'Freelance': Icons.work,
-    'Bonus': Icons.card_giftcard, 'Investment': Icons.trending_up,
-    'Gift': Icons.redeem, 'Other': Icons.attach_money,
+    'Salary': Icons.work_outline,
+    'Freelance': Icons.computer,
+    'Bonus': Icons.card_giftcard,
+    'Investment': Icons.trending_up,
+    'Gift': Icons.redeem,
+    'Interest': Icons.account_balance,
+    'Rental': Icons.house_outlined,
+    'Dividends': Icons.analytics_outlined,
+    'Royalties': Icons.copyright,
+    'Side Hustle': Icons.lightbulb_outline,
+    'Refunds': Icons.refresh,
+    'Other': Icons.attach_money,
+    'Uncategorized': Icons.label_off_outlined,
   };
+
 
   @override
   void initState() {
@@ -249,58 +261,55 @@ class _StatsScreenState extends State<StatsScreen> {
               Expanded(
                 child: Container(
                   height: 150,
-                  padding: const EdgeInsets.symmetric(
-                      vertical: 8.0, horizontal: 12.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
                   decoration: BoxDecoration(
                     color: isDarkMode ? Colors.black.withOpacity(0.2) : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Scrollbar(
-                    thumbVisibility: true,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.only(right: 12.0),
-                      itemCount: activeCategoryData.length,
-                      itemBuilder: (context, index) {
-                        final entry =
-                        activeCategoryData.entries.elementAt(index);
-                        final percentage = (totalForActiveType > 0)
-                            ? (entry.value / totalForActiveType)
-                            : 0.0;
-                        final color =
-                        _categoryColors[index % _categoryColors.length];
+                  child: ListView.builder(
+                    padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 0.0),
+                    itemCount: activeCategoryData.length,
+                    itemBuilder: (context, index) {
+                      final entry =
+                      activeCategoryData.entries.elementAt(index);
+                      final percentage = (totalForActiveType > 0)
+                          ? (entry.value / totalForActiveType)
+                          : 0.0;
+                      final color =
+                      _categoryColors[index % _categoryColors.length];
 
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4.0),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  entry.key,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w500),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Text(
-                                NumberFormat.percentPattern()
-                                    .format(percentage),
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                entry.key,
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.bold),
+                                    fontWeight: FontWeight.w500),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(width: 8),
-                              Container(
-                                width: 10,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  shape: BoxShape.circle,
-                                ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              NumberFormat.percentPattern()
+                                  .format(percentage),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
                               ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -412,7 +421,7 @@ class _StatsScreenState extends State<StatsScreen> {
                 ? (entry.value / totalForActiveType)
                 : 0.0;
             final color = _categoryColors[index % _categoryColors.length];
-            final icon = _categoryIcons[entry.key] ?? Icons.category;
+            final icon = _categoryIcons[entry.key] ?? Icons.category_outlined;
 
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),

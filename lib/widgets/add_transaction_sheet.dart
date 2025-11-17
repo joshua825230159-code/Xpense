@@ -23,6 +23,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
+  late TextEditingController _dateController;
 
   TransactionType _transactionType = TransactionType.expense;
   DateTime _selectedDate = DateTime.now();
@@ -38,22 +39,36 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
     Icons.phone_android: 'Gadgets', Icons.local_gas_station: 'Fuel',
   };
   final Map<IconData, String> incomeCategoryMap = {
-    Icons.work_outline: 'Salary', Icons.computer: 'Freelance',
-    Icons.card_giftcard: 'Bonus', Icons.trending_up: 'Investment',
-    Icons.redeem: 'Gift', Icons.attach_money: 'Other',
+    Icons.work_outline: 'Salary',
+    Icons.computer: 'Freelance',
+    Icons.card_giftcard: 'Bonus',
+    Icons.trending_up: 'Investment',
+    Icons.redeem: 'Gift',
+    Icons.account_balance: 'Interest',
+    Icons.house_outlined: 'Rental',
+    Icons.analytics_outlined: 'Dividends',
+    Icons.copyright: 'Royalties',
+    Icons.lightbulb_outline: 'Side Hustle',
+    Icons.refresh: 'Refunds',
+    Icons.attach_money: 'Other',
   };
+
 
   @override
   void initState() {
     super.initState();
     _selectedIcon = expenseCategoryMap.keys.first;
     _selectedCategory = expenseCategoryMap.values.first;
+    _dateController = TextEditingController(
+      text: DateFormat('d MMMM yyyy').format(_selectedDate),
+    );
   }
 
   @override
   void dispose() {
     _descriptionController.dispose();
     _amountController.dispose();
+    _dateController.dispose();
     super.dispose();
   }
 
@@ -98,6 +113,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
     if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
+        _dateController.text = DateFormat('d MMMM yyyy').format(_selectedDate);
       });
     }
   }
@@ -110,16 +126,25 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
     final activeIcons = activeCategoryMap.keys.toList();
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
+    final inputFillColor = isDarkMode
+        ? Theme.of(context).inputDecorationTheme.fillColor
+        : Colors.grey.shade200;
+
+    final inputBorderStyle = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    );
+
     final String currencySymbol = CurrencyFormatterService.getSymbol(
         widget.accountCurrencyCode
     );
 
     return Padding(
       padding: EdgeInsets.only(
-        top: 20,
+        top: 16,
         left: 20,
         right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 30,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: SingleChildScrollView(
         child: Form(
@@ -128,91 +153,148 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text('Add New Transaction', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: InputDecoration(
-                  labelText: 'Description',
-                  prefixIcon: const Icon(Icons.description_outlined),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
-                validator: (value) => value == null || value.isEmpty ? 'Please enter a description' : null,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 16),
+
+              const Center(
+                child: Text(
+                    'Add New Transaction',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              Center(
+                child: SegmentedButton<TransactionType>(
+                  segments: <ButtonSegment<TransactionType>>[
+                    ButtonSegment<TransactionType>(
+                      value: TransactionType.expense,
+                      label: Text(
+                        'Expense',
+                        style: TextStyle(
+                            color: _transactionType == TransactionType.expense
+                                ? Colors.white
+                                : (isDarkMode ? Colors.white70 : Colors.black87)
+                        ),
+                      ),
+                      icon: Icon(
+                        Icons.arrow_upward,
+                        color: _transactionType == TransactionType.expense
+                            ? Colors.white
+                            : Colors.red,
+                      ),
+                    ),
+                    ButtonSegment<TransactionType>(
+                      value: TransactionType.income,
+                      label: Text(
+                        'Income',
+                        style: TextStyle(
+                            color: _transactionType == TransactionType.income
+                                ? Colors.white
+                                : (isDarkMode ? Colors.white70 : Colors.black87)
+                        ),
+                      ),
+                      icon: Icon(
+                        Icons.arrow_downward,
+                        color: _transactionType == TransactionType.income
+                            ? Colors.white
+                            : Colors.green,
+                      ),
+                    ),
+                  ],
+                  selected: {_transactionType},
+                  onSelectionChanged: (Set<TransactionType> newSelection) {
+                    setState(() {
+                      _transactionType = newSelection.first;
+                      final newMap = _transactionType == TransactionType.income
+                          ? incomeCategoryMap
+                          : expenseCategoryMap;
+                      _selectedIcon = newMap.keys.first;
+                      _selectedCategory = newMap[_selectedIcon];
+                    });
+                  },
+                  style: SegmentedButton.styleFrom(
+                    backgroundColor: inputFillColor,
+                    selectedBackgroundColor: _transactionType == TransactionType.expense
+                        ? Colors.red.shade400
+                        : Colors.green.shade400,
+                    selectedForegroundColor: Colors.white,
+                    side: BorderSide.none,
+                  ),
+                  showSelectedIcon: false,
+                ),
+              ),
+              const SizedBox(height: 20),
+
               TextFormField(
                 controller: _amountController,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 decoration: InputDecoration(
                   labelText: 'Amount',
-                  prefixIcon: Align(
-                    widthFactor: 1.0,
-                    heightFactor: 1.0,
+                  filled: true,
+                  fillColor: inputFillColor,
+                  border: inputBorderStyle,
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0),
                     child: Text(
                       currencySymbol,
                       style: TextStyle(
                         color: Theme.of(context).hintColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Please enter an amount';
-
                   final double? amount = double.tryParse(
                       value.replaceAll('.', '').replaceAll(',', '')
                   );
-
                   if (amount == null) return 'Please enter a valid number';
                   return null;
                 },
               ),
-              const SizedBox(height: 15),
-              Center(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ToggleButtons(
-                    isSelected: [
-                      _transactionType == TransactionType.expense,
-                      _transactionType == TransactionType.income,
-                    ],
-                    onPressed: (index) {
-                      setState(() {
-                        _transactionType = index == 0 ? TransactionType.expense : TransactionType.income;
-                        final newMap = _transactionType == TransactionType.income ? incomeCategoryMap : expenseCategoryMap;
-                        _selectedIcon = newMap.keys.first;
-                        _selectedCategory = newMap[_selectedIcon];
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    selectedColor: Colors.white,
-                    fillColor: _transactionType == TransactionType.expense ? Colors.red : Colors.green,
-                    borderColor: Colors.grey.shade300,
-                    selectedBorderColor: _transactionType == TransactionType.expense ? Colors.red : Colors.green,
-                    children: const <Widget>[
-                      Padding(padding: EdgeInsets.symmetric(horizontal: 24), child: Text('Expense')),
-                      Padding(padding: EdgeInsets.symmetric(horizontal: 24), child: Text('Income')),
-                    ],
-                  ),
+              const SizedBox(height: 12),
+
+              TextFormField(
+                controller: _descriptionController,
+                decoration: InputDecoration(
+                  labelText: 'Description',
+                  filled: true,
+                  fillColor: inputFillColor,
+                  border: inputBorderStyle,
+                  prefixIcon: const Icon(Icons.description_outlined),
                 ),
+                validator: (value) => value == null || value.isEmpty ? 'Please enter a description' : null,
               ),
-              const SizedBox(height: 15),
-              ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.grey.shade400),
+              const SizedBox(height: 12),
+
+              TextFormField(
+                controller: _dateController,
+                readOnly: true,
+                decoration: InputDecoration(
+                  labelText: 'Date',
+                  filled: true,
+                  fillColor: inputFillColor,
+                  border: inputBorderStyle,
+                  prefixIcon: const Icon(Icons.calendar_today_outlined),
                 ),
-                leading: const Icon(Icons.calendar_today),
-                title: Text(DateFormat('d MMMM yyyy').format(_selectedDate)),
                 onTap: () => _selectDate(context),
               ),
-              const SizedBox(height: 15),
+
+              const SizedBox(height: 20),
+
               Text(
                 'Select Category',
                 style: TextStyle(
@@ -221,50 +303,71 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                   color: Theme.of(context).textTheme.bodyMedium?.color,
                 ),
               ),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 60,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: activeIcons.map((icon) {
-                    final isSelected = icon == _selectedIcon;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 10.0),
-                      child: GestureDetector(
-                        onTap: () => setState(() {
-                          _selectedIcon = icon;
-                          _selectedCategory = activeCategoryMap[icon];
-                        }),
-                        child: Container(
-                          width: 60,
-                          decoration: BoxDecoration(
-                            color: isSelected ? Colors.orange.withOpacity(0.2) : (isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200),
-                            borderRadius: BorderRadius.circular(15),
-                            border: isSelected ? Border.all(color: Colors.orange, width: 2) : null,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(icon, color: isSelected ? Colors.orange : (isDarkMode ? Colors.white70 : Colors.grey.shade700)),
-                              const SizedBox(height: 4),
-                              Text(
-                                activeCategoryMap[icon]!,
-                                style: TextStyle(
-                                    fontSize: 10,
-                                    color: isSelected ? Colors.orange : (isDarkMode ? Colors.white70 : Colors.grey.shade700)),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+              const SizedBox(height: 12),
+
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 1.0,
                 ),
+                itemCount: activeIcons.length,
+                itemBuilder: (context, index) {
+                  final icon = activeIcons[index];
+                  final isSelected = icon == _selectedIcon;
+                  final categoryName = activeCategoryMap[icon]!;
+                  return InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedIcon = icon;
+                        _selectedCategory = categoryName;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(15),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.orange.withOpacity(0.2)
+                            : inputFillColor,
+                        borderRadius: BorderRadius.circular(15),
+                        border: isSelected
+                            ? Border.all(color: Colors.orange, width: 2)
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(icon,
+                              size: 28,
+                              color: isSelected
+                                  ? Colors.orange
+                                  : (isDarkMode ? Colors.white70 : Colors.grey.shade700)),
+                          const SizedBox(height: 6),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: Text(
+                              categoryName,
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  color: isSelected
+                                      ? Colors.orange
+                                      : (isDarkMode ? Colors.white70 : Colors.grey.shade700)),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -273,7 +376,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                     backgroundColor: Colors.orange,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('Add Transaction', style: TextStyle(fontSize: 16, color: Colors.white)),
+                  child: const Text('Add Transaction', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
                   onPressed: _submitData,
                 ),
               ),
