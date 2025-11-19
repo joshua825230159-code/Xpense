@@ -165,7 +165,13 @@ class _StatsScreenState extends State<StatsScreen> {
       'transactions': widget.transactions,
       'selectedPeriod': widget.selectedPeriod,
     };
-    return await compute(_computeStats, args);
+
+    // use compute when large for speed
+    if (widget.transactions.length > 500) {
+      return await compute(_computeStats, args);
+    } else {
+      return _computeStats(args);
+    }
   }
 
   @override
@@ -317,40 +323,43 @@ class _StatsScreenState extends State<StatsScreen> {
               SizedBox(
                 width: 140,
                 height: 140,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    PieChart(
-                      PieChartData(
-                        pieTouchData: PieTouchData(
-                          touchCallback:
-                              (FlTouchEvent event, pieTouchResponse) {
-                            setState(() {
-                              if (!event.isInterestedForInteractions ||
-                                  pieTouchResponse == null ||
-                                  pieTouchResponse.touchedSection == null) {
-                                _touchedIndex = -1;
-                                return;
-                              }
-                              _touchedIndex = pieTouchResponse
-                                  .touchedSection!.touchedSectionIndex;
-                            });
-                          },
+                // repaint boundary for heavy grpahics chart
+                child: RepaintBoundary(
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      PieChart(
+                        PieChartData(
+                          pieTouchData: PieTouchData(
+                            touchCallback:
+                                (FlTouchEvent event, pieTouchResponse) {
+                              setState(() {
+                                if (!event.isInterestedForInteractions ||
+                                    pieTouchResponse == null ||
+                                    pieTouchResponse.touchedSection == null) {
+                                  _touchedIndex = -1;
+                                  return;
+                                }
+                                _touchedIndex = pieTouchResponse
+                                    .touchedSection!.touchedSectionIndex;
+                              });
+                            },
+                          ),
+                          sections: _getChartSections(activeCategoryData),
+                          centerSpaceRadius: 40,
+                          sectionsSpace: 2,
                         ),
-                        sections: _getChartSections(activeCategoryData),
-                        centerSpaceRadius: 40,
-                        sectionsSpace: 2,
                       ),
-                    ),
-                    Text(
-                      '100%',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).textTheme.bodyMedium?.color,
+                      Text(
+                        '100%',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).textTheme.bodyMedium?.color,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],

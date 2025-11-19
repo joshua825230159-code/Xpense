@@ -71,7 +71,10 @@ class ExpenseListScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (showHeader) ...[
-                  _buildBalanceCard(context, activeAccount, transactions),
+                  // Use RepaintBoundary to isolate the complex gradient card so it doesn't repaint when the list below scrolls
+                  RepaintBoundary(
+                      child: _buildBalanceCard(context, activeAccount, transactions)
+                  ),
                   const SizedBox(height: 20),
                 ],
                 if (showHeader)
@@ -116,21 +119,25 @@ class ExpenseListScreen extends StatelessWidget {
     double? budget = activeAccount.budget;
     String currencyCode = activeAccount.currencyCode;
 
+    // Calculate all totals in a single pass loop
+    double monthlyExpense = 0.0;
+    double totalIncome = 0.0;
+    double overallExpense = 0.0;
+
     final now = DateTime.now();
-    final monthlyExpense = currentTransactions
-        .where((t) =>
-    t.type == TransactionType.expense &&
-        t.date.year == now.year &&
-        t.date.month == now.month)
-        .fold(0.0, (sum, item) => sum + item.amount);
+    final currentMonth = now.month;
+    final currentYear = now.year;
 
-    final totalIncome = currentTransactions
-        .where((t) => t.type == TransactionType.income)
-        .fold(0.0, (sum, item) => sum + item.amount);
-
-    final overallExpense = currentTransactions
-        .where((t) => t.type == TransactionType.expense)
-        .fold(0.0, (sum, item) => sum + item.amount);
+    for (var t in currentTransactions) {
+      if (t.type == TransactionType.income) {
+        totalIncome += t.amount;
+      } else {
+        overallExpense += t.amount;
+        if (t.date.year == currentYear && t.date.month == currentMonth) {
+          monthlyExpense += t.amount;
+        }
+      }
+    }
 
     double budgetProgress = 0.0;
     if (budget != null && budget > 0) {

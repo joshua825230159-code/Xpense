@@ -121,6 +121,21 @@ class MainViewModel extends ChangeNotifier {
     _calculationError = '';
     notifyListeners();
 
+    // if all accounts are in idr, skip api call
+    final bool allAccountsAreBaseCurrency = _accounts.every(
+            (account) => account.currencyCode == baseCurrency);
+
+    if (allAccountsAreBaseCurrency) {
+      double total = 0.0;
+      for (final account in _accounts) {
+        total += account.balance;
+      }
+      _totalBalanceInBaseCurrency = total;
+      _isCalculatingTotal = false;
+      notifyListeners();
+      return;
+    }
+
     try {
       final rates = await _apiService.getAllRates(baseCurrency);
 
