@@ -217,16 +217,20 @@ class _MainScreenState extends State<MainScreen> {
       );
       return;
     }
+
     final viewModel = context.read<MainViewModel>();
     final Account? activeAccount = viewModel.activeAccount;
+
     if (activeAccount == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No active account selected.')),
       );
       return;
     }
+
     final List<Transaction> allTransactions =
         viewModel.transactionsForActiveAccount;
+
     final now = DateTime.now();
     List<Transaction> periodTransactions;
 
@@ -506,7 +510,7 @@ class _MainScreenState extends State<MainScreen> {
       key: _scaffoldKey,
       extendBody: true,
       appBar: _isSelectionMode
-          ? _buildSelectionAppBar()
+          ? _buildSelectionAppBar(filteredTransactions)
           : (_isSearching
           ? _buildSearchAppBar()
           : _buildDefaultAppBar(activeAccount)),
@@ -553,8 +557,9 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
+  AppBar _buildSelectionAppBar(List<Transaction> displayedTransactions) {
+    final bool allSelected = _selectedTransactions.length == displayedTransactions.length && displayedTransactions.isNotEmpty;
 
-  AppBar _buildSelectionAppBar() {
     return AppBar(
       title: Text('${_selectedTransactions.length} chosen'),
       leading: IconButton(
@@ -562,6 +567,20 @@ class _MainScreenState extends State<MainScreen> {
         onPressed: _exitSelectionMode,
       ),
       actions: [
+        IconButton(
+          icon: Icon(allSelected ? Icons.deselect_outlined : Icons.select_all),
+          tooltip: allSelected ? 'Deselect All' : 'Select All',
+          onPressed: () {
+            setState(() {
+              if (allSelected) {
+                _selectedTransactions.clear();
+                _isSelectionMode = false;
+              } else {
+                _selectedTransactions.addAll(displayedTransactions);
+              }
+            });
+          },
+        ),
         IconButton(
           icon: const Icon(Icons.delete_outline),
           onPressed: _handleDeleteTransactions,

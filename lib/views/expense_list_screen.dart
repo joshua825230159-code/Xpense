@@ -71,7 +71,6 @@ class ExpenseListScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (showHeader) ...[
-                  // Use RepaintBoundary to isolate the complex gradient card so it doesn't repaint when the list below scrolls
                   RepaintBoundary(
                       child: _buildBalanceCard(context, activeAccount, transactions)
                   ),
@@ -103,6 +102,7 @@ class ExpenseListScreen extends StatelessWidget {
                 transaction,
                 activeAccount!.currencyCode,
                 isSelected,
+                isSelectionMode,
               );
             },
           ),
@@ -119,7 +119,6 @@ class ExpenseListScreen extends StatelessWidget {
     double? budget = activeAccount.budget;
     String currencyCode = activeAccount.currencyCode;
 
-    // Calculate all totals in a single pass loop
     double monthlyExpense = 0.0;
     double totalIncome = 0.0;
     double overallExpense = 0.0;
@@ -332,13 +331,20 @@ class ExpenseListScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTransactionItem(BuildContext context, Transaction transaction,
-      String currencyCode, bool isSelected) {
+  Widget _buildTransactionItem(
+      BuildContext context,
+      Transaction transaction,
+      String currencyCode,
+      bool isSelected,
+      bool isSelectionMode) {
+
     final color =
     transaction.type == TransactionType.income ? Colors.green : Colors.red;
     final amountSign = transaction.type == TransactionType.income ? '+' : '-';
-    final tileColor =
-    isSelected ? Colors.blue.shade100 : Theme.of(context).cardColor;
+    final tileColor = isSelected
+        ? Colors.orange.withOpacity(0.1)
+        : Theme.of(context).cardColor;
+
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
@@ -377,81 +383,78 @@ class ExpenseListScreen extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            Container(
+              width: 48,
+              height: 48,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Icon(transaction.icon, color: color, size: 24),
+            ),
+
+            const SizedBox(width: 15),
+
             Expanded(
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Icon(transaction.icon, color: color, size: 24),
-                        ),
-                        if (isSelected)
-                          Positioned(
-                            top: -4,
-                            right: -4,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: Colors.blue,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                    color: Theme.of(context).cardColor,
-                                    width: 1.5),
-                              ),
-                              child: const Icon(
-                                Icons.check,
-                                color: Colors.white,
-                                size: 14,
-                              ),
-                            ),
-                          ),
-                      ],
+                  Text(
+                    transaction.description,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          transaction.description,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          DateFormat.yMMMd().add_jm().format(transaction.date),
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    DateFormat.yMMMd().add_jm().format(transaction.date),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              "$amountSign ${CurrencyFormatterService.format(transaction.amount, currencyCode)}",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            )
+
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "$amountSign ${CurrencyFormatterService.format(transaction.amount, currencyCode)}",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+
+                if (isSelectionMode) ...[
+                  const SizedBox(width: 8),
+                  Transform.scale(
+                    scale: 1.1,
+                    child: Checkbox(
+                      value: isSelected,
+                      activeColor: Colors.orange,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      onChanged: (bool? value) {
+                        if (selectedTransactions.isNotEmpty) {
+                          final newSelection = Set<Transaction>.from(selectedTransactions);
+                          if (newSelection.contains(transaction)) {
+                            newSelection.remove(transaction);
+                          } else {
+                            newSelection.add(transaction);
+                          }
+                          onSelectionChanged(newSelection);
+                        }
+                      },
+                    ),
+                  ),
+                ]
+              ],
+            ),
           ],
         ),
       ),
