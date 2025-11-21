@@ -57,7 +57,9 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     super.initState();
     if (widget.account != null) {
       _nameController.text = widget.account!.name;
-      _budgetController.text = widget.account!.budget?.toString() ?? '';
+      _budgetController.text = widget.account!.budget != null
+          ? _formatBalance(widget.account!.budget!, widget.account!.currencyCode)
+          : '';
       _selectedType = widget.account!.type;
       _selectedColor = widget.account!.color;
       _selectedCurrency = widget.account!.currencyCode;
@@ -72,28 +74,36 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   }
 
   String _formatBalance(double balance, String currencyCode) {
-    final String locale = (currencyCode == 'IDR' || currencyCode == 'JPY')
-        ? 'id_ID'
-        : 'en_US';
-    final formatter = NumberFormat.decimalPattern(locale);
     if (currencyCode == 'IDR' || currencyCode == 'JPY') {
-      return formatter.format(balance.toInt());
-    }
-    return formatter.format(balance);
-  }
-
-  double _parseBalance(String balanceText, String currencyCode) {
-    String cleanBalance;
-    if (currencyCode == 'IDR' || currencyCode == 'JPY') {
-      cleanBalance = balanceText.replaceAll('.', '');
+      return NumberFormat.currency(
+        locale: 'id_ID',
+        symbol: '',
+        decimalDigits: 0,
+      ).format(balance).trim();
     } else {
-      cleanBalance = balanceText.replaceAll(',', '');
+      return NumberFormat.currency(
+        locale: 'en_US',
+        symbol: '',
+        decimalDigits: 2,
+      ).format(balance).trim();
     }
-    return double.tryParse(cleanBalance) ?? 0.0;
+  }
+  double _parseBalance(String balanceText, String currencyCode) {
+    if (balanceText.isEmpty) return 0.0;
+
+    String clean = balanceText.replaceAll(RegExp(r'[^\d.,-]'), '');
+
+    if (currencyCode == 'IDR' || currencyCode == 'JPY') {
+      clean = clean.replaceAll('.', '');
+    } else {
+      clean = clean.replaceAll(',', '');
+    }
+
+    return double.tryParse(clean) ?? 0.0;
   }
 
   void _convertBalance(String newCurrency) async {
-    if (widget.account == null) {
+    if (_balanceController.text.isEmpty) {
       setState(() {
         _selectedCurrency = newCurrency;
       });
@@ -113,20 +123,20 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     final rates = viewModel.allConversionRates;
 
     if (rates.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error: Rate cache not found. Please check internet.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      setState(() {
-        _isConverting = false;
-      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: Rate cache not found. Please check internet.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isConverting = false);
+      }
       return;
     }
 
     final String fromCurrency = _selectedCurrency;
-    final double currentBalance = _parseBalance(_balanceController.text, _selectedCurrency);
+    final double currentBalance = _parseBalance(_balanceController.text, fromCurrency);
 
     final String currentBudgetText = _budgetController.text;
     double? currentBudget;
@@ -138,15 +148,15 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     final double? toRate = (newCurrency == 'IDR') ? 1.0 : rates[newCurrency];
 
     if (fromRate == null || toRate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: Rate for $fromCurrency or $newCurrency not found.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      setState(() {
-        _isConverting = false;
-      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: Rate for $fromCurrency or $newCurrency not found.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isConverting = false);
+      }
       return;
     }
 
@@ -330,7 +340,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                           }).toList(),
                           onChanged: (String? newValue) {
                             if (newValue != null && newValue != _selectedCurrency) {
-                              if (isEditing) {
+                              if (_balanceController.text.isNotEmpty) {
                                 _convertBalance(newValue);
                               } else {
                                 setState(() {
@@ -352,7 +362,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                             fillColor: inputFillColor,
                             border: inputBorderStyle,
                           ),
-                          keyboardType: TextInputType.number,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           readOnly: isEditing,
                           enabled: !isEditing,
                           style: const TextStyle(fontWeight: FontWeight.bold),
@@ -371,7 +381,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       fillColor: inputFillColor,
                       border: inputBorderStyle,
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   ),
                   const SizedBox(height: 24),
 
