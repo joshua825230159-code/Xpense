@@ -166,7 +166,6 @@ class _StatsScreenState extends State<StatsScreen> {
       'selectedPeriod': widget.selectedPeriod,
     };
 
-    // use compute when large for speed
     if (widget.transactions.length > 500) {
       return await compute(_computeStats, args);
     } else {
@@ -220,7 +219,8 @@ class _StatsScreenState extends State<StatsScreen> {
             );
           }
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16.0, 10.0, 16.0, 16.0),
+            // PERBAIKAN: Menambah padding bawah menjadi 100.0 agar tidak tertutup Navigation Bar
+            padding: const EdgeInsets.fromLTRB(16.0, 10.0, 16.0, 100.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -323,7 +323,6 @@ class _StatsScreenState extends State<StatsScreen> {
               SizedBox(
                 width: 140,
                 height: 140,
-                // repaint boundary for heavy grpahics chart
                 child: RepaintBoundary(
                   child: Stack(
                     alignment: Alignment.center,

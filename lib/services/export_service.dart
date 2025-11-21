@@ -2,7 +2,9 @@ import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:pdf/pdf.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:printing/printing.dart';
 import '../models/account_model.dart';
 import '../models/transaction_model.dart';
 import 'package:intl/intl.dart';
@@ -75,6 +77,9 @@ class ExportService {
     final pdf = pw.Document();
     final String currencyCode = account.currencyCode;
 
+    final ttf = await PdfGoogleFonts.notoSansRegular();
+    final ttfBold = await PdfGoogleFonts.notoSansBold();
+
     final double totalIncome = transactions
         .where((t) => t.type == TransactionType.income)
         .fold(0.0, (sum, item) => sum + item.amount);
@@ -88,6 +93,10 @@ class ExportService {
 
     pdf.addPage(
       pw.MultiPage(
+        theme: pw.ThemeData.withFont(
+          base: ttf,
+          bold: ttfBold,
+        ),
         build: (context) => [
           pw.Header(
             level: 0,
@@ -104,6 +113,16 @@ class ExportService {
           pw.Table.fromTextArray(
             headers: ['Date', 'Description', 'Category', 'Type', 'Amount', 'Balance'],
             data: tableData,
+            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            cellStyle: const pw.TextStyle(),
+            cellAlignments: {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.centerLeft,
+              2: pw.Alignment.centerLeft,
+              3: pw.Alignment.center,
+              4: pw.Alignment.centerRight,
+              5: pw.Alignment.centerRight,
+            },
           ),
         ],
       ),
