@@ -121,21 +121,6 @@ class MainViewModel extends ChangeNotifier {
     _calculationError = '';
     notifyListeners();
 
-    // if all accounts are in idr, skip api call
-    final bool allAccountsAreBaseCurrency = _accounts.every(
-            (account) => account.currencyCode == baseCurrency);
-
-    if (allAccountsAreBaseCurrency) {
-      double total = 0.0;
-      for (final account in _accounts) {
-        total += account.balance;
-      }
-      _totalBalanceInBaseCurrency = total;
-      _isCalculatingTotal = false;
-      notifyListeners();
-      return;
-    }
-
     try {
       final rates = await _apiService.getAllRates(baseCurrency);
 
@@ -151,7 +136,6 @@ class MainViewModel extends ChangeNotifier {
           if (rate != null) {
             total += account.balance / rate;
           } else {
-            _calculationError = 'No rate for ${account.currencyCode}';
             print('Warning: No rate found for ${account.currencyCode}');
           }
         }
@@ -162,6 +146,10 @@ class MainViewModel extends ChangeNotifier {
     } catch (e) {
       _calculationError = 'Failed to fetch rates';
       print('Error calculating total balance: $e');
+
+      double total = 0.0;
+      for (var acc in _accounts) total += acc.balance;
+      _totalBalanceInBaseCurrency = total;
     }
 
     _isCalculatingTotal = false;
@@ -319,8 +307,6 @@ class MainViewModel extends ChangeNotifier {
 
     final ids = transactionsToDelete.map((t) => t.id).toList();
 
-    // Calculate the balance change BEFORE awaiting the database call.
-    // If we wait until after 'await', the 'transactionsToDelete' set might be cleared by the UI (since it's passed by reference), resulting in 0 balance change.
     double balanceChange = 0;
     for (var tx in transactionsToDelete) {
       if (tx.type == TransactionType.income) {

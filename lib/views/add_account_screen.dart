@@ -92,7 +92,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     return double.tryParse(cleanBalance) ?? 0.0;
   }
 
-  void _convertBalance(String newCurrency) {
+  void _convertBalance(String newCurrency) async {
     if (widget.account == null) {
       setState(() {
         _selectedCurrency = newCurrency;
@@ -105,12 +105,17 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     });
 
     final viewModel = context.read<MainViewModel>();
+
+    if (viewModel.allConversionRates.isEmpty) {
+      await viewModel.calculateTotalBalance('IDR');
+    }
+
     final rates = viewModel.allConversionRates;
 
     if (rates.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Error: Rate cache not found. Please restart app.'),
+          content: Text('Error: Rate cache not found. Please check internet.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -152,15 +157,18 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     if (currentBudget != null) {
       newBudget = currentBudget * crossRate;
     }
-    setState(() {
-      _balanceController.text = _formatBalance(newBalance, newCurrency);
 
-      if (newBudget != null) {
-        _budgetController.text = _formatBalance(newBudget, newCurrency);
-      }
-      _selectedCurrency = newCurrency;
-      _isConverting = false;
-    });
+    if (mounted) {
+      setState(() {
+        _balanceController.text = _formatBalance(newBalance, newCurrency);
+
+        if (newBudget != null) {
+          _budgetController.text = _formatBalance(newBudget, newCurrency);
+        }
+        _selectedCurrency = newCurrency;
+        _isConverting = false;
+      });
+    }
   }
 
   void _saveAccount() {

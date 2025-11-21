@@ -76,7 +76,7 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "logo_xpense.png"
+  image_path: "Xpense.png"
   min_sdk_android: 21
   # To add assets to your application, add an assets section, like this:
   # assets:
