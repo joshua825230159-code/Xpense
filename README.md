@@ -2,6 +2,8 @@
 
 https://github.com/user-attachments/assets/a01420fd-9b98-4182-a849-d2cfe123fd82
 
+https://youtube.com/shorts/I1ZCUK5RzLQ?feature=share
+
 Dokumen ini menjelaskan detail teknis, arsitektur, skema database, dan alur data yang digunakan dalam pengembangan aplikasi Xpense.
 
 ## 1. Arsitektur Aplikasi (MVVM)
